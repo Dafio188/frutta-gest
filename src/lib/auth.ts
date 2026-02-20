@@ -41,7 +41,13 @@ declare module "@auth/core/jwt" {
   }
 }
 
-const providers = [
+type AuthProvider =
+  | ReturnType<typeof Credentials>
+  | ReturnType<typeof Google>
+
+const providers: AuthProvider[] = []
+
+providers.push(
   Credentials({
     async authorize(credentials) {
       const parsed = loginSchema.safeParse(credentials)
@@ -74,11 +80,11 @@ const providers = [
         customerId: user.customerId,
       }
     },
-  }),
-]
+  })
+)
 
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-  providers.unshift(
+  providers.push(
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
