@@ -45,9 +45,7 @@ type AuthProvider =
   | ReturnType<typeof Credentials>
   | ReturnType<typeof Google>
 
-const providers: AuthProvider[] = []
-
-providers.push(
+const providers: AuthProvider[] = [
   Credentials({
     async authorize(credentials) {
       const parsed = loginSchema.safeParse(credentials)
@@ -80,11 +78,11 @@ providers.push(
         customerId: user.customerId,
       }
     },
-  })
-)
+  }),
+]
 
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-  providers.push(
+  providers.unshift(
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
