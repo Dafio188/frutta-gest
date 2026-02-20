@@ -1,0 +1,72 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: fruttagest
+      POSTGRES_PASSWORD: fruttagest2026
+      POSTGRES_DB: fruttagest
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fruttagest -d fruttagest"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://fruttagest:fruttagest2026@db:5432/fruttagest?schema=public"
+    command: npx prisma db push
+    restart: "no"
+    profiles:
+      - setup
+
+  seed:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://fruttagest:fruttagest2026@db:5432/fruttagest?schema=public"
+    command: npx prisma db seed
+    restart: "no"
+    profiles:
+      - setup
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "3650:3650"
+    environment:
+      DATABASE_URL: "postgresql://fruttagest:fruttagest2026@db:5432/fruttagest?schema=public"
+      NEXTAUTH_URL: "http://localhost:3650"
+      AUTH_URL: "http://localhost:3650"
+      NEXTAUTH_SECRET: "fruttagest-demo-secret-2026-change-in-production"
+      AUTH_SECRET: "fruttagest-demo-secret-2026-change-in-production"
+      AUTH_TRUST_HOST: "true"
+      PORT: "3650"
+      HOSTNAME: "0.0.0.0"
+    env_file:
+      - .env.docker
+
+volumes:
+  postgres_data:

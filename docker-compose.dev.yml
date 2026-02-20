@@ -1,0 +1,28 @@
+# Override per sviluppo con hot-reload
+# Uso: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: deps
+    command: sh -c "npx prisma generate && npm run dev"
+    ports:
+      - "3650:3650"
+    environment:
+      DATABASE_URL: "postgresql://fruttagest:fruttagest2026@db:5432/fruttagest?schema=public"
+      NEXTAUTH_URL: "http://localhost:3650"
+      AUTH_URL: "http://localhost:3650"
+      NEXTAUTH_SECRET: "docker-dev-secret-change-in-production"
+      AUTH_SECRET: "docker-dev-secret-change-in-production"
+      AUTH_TRUST_HOST: "true"
+      PORT: "3650"
+    volumes:
+      - ./src:/app/src
+      - ./prisma:/app/prisma
+      - ./public:/app/public
+      - ./next.config.ts:/app/next.config.ts
+      - ./tailwind.config.ts:/app/tailwind.config.ts
+      - ./tsconfig.json:/app/tsconfig.json
+      - ./postcss.config.mjs:/app/postcss.config.mjs
