@@ -7,6 +7,7 @@
  */
 
 import NextAuth from "next-auth"
+import type { NextAuthConfig } from "next-auth"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import Credentials from "next-auth/providers/credentials"
 import Google from "next-auth/providers/google"
@@ -41,11 +42,18 @@ declare module "@auth/core/jwt" {
   }
 }
 
-type AuthProvider =
-  | ReturnType<typeof Credentials>
-  | ReturnType<typeof Google>
+const providers: NextAuthConfig["providers"] = []
 
-const providers: AuthProvider[] = [
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  providers.push(
+    Google({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    })
+  )
+}
+
+providers.push(
   Credentials({
     async authorize(credentials) {
       const parsed = loginSchema.safeParse(credentials)
@@ -78,17 +86,8 @@ const providers: AuthProvider[] = [
         customerId: user.customerId,
       }
     },
-  }),
-]
-
-if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-  providers.unshift(
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    })
-  )
-}
+  })
+)
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(db) as unknown as Adapter,
