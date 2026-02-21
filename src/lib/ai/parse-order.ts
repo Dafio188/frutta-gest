@@ -10,10 +10,6 @@ import OpenAI from "openai"
 import { db } from "@/lib/db"
 import type { ParsedOrderData, ParsedOrderItem } from "@/types"
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
-
 const SYSTEM_PROMPT = `Sei un assistente specializzato nel parsing di ordini di prodotti ortofrutticoli per il mercato italiano.
 
 Dato un testo (messaggio WhatsApp, email o trascrizione audio), devi estrarre:
@@ -47,6 +43,14 @@ Rispondi SOLO con JSON valido nel seguente formato:
 }`
 
 export async function parseOrderText(text: string): Promise<ParsedOrderData> {
+  if (!process.env.OPENAI_API_KEY) {
+    return { items: [], rawText: text }
+  }
+
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  })
+
   const productNames = await getProductCatalogNames()
 
   const response = await openai.chat.completions.create({

@@ -10,11 +10,15 @@ import { db } from "@/lib/db"
 import { parseOrderText } from "@/lib/ai/parse-order"
 import fs from "fs"
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
-
 export async function transcribeAudio(transcriptionId: string): Promise<void> {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY non configurata")
+  }
+
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  })
+
   const record = await db.audioTranscription.findUnique({
     where: { id: transcriptionId },
   })
