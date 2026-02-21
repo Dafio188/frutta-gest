@@ -93,14 +93,16 @@ export default function RegisterPage() {
     <motion.div variants={stagger} initial="hidden" animate="show" className="w-full max-w-md">
       <motion.div variants={fadeUp} className="glass-card p-8">
         <motion.div variants={fadeUp} className="flex flex-col items-center mb-8">
-          <Image
-            src="/LOGO.png"
-            alt="FruttaGest"
-            width={320}
-            height={120}
-            priority
-            className="mb-4 h-20 w-auto"
-          />
+          <Link href="/">
+            <Image
+              src="/LOGO.png"
+              alt="FruttaGest"
+              width={320}
+              height={120}
+              priority
+              className="mb-4 h-20 w-auto cursor-pointer"
+            />
+          </Link>
           <h1 className="text-2xl font-bold tracking-tight">Crea un account</h1>
           <p className="text-sm text-muted-foreground mt-1">Inizia a gestire la tua attivita</p>
         </motion.div>
