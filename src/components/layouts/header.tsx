@@ -7,7 +7,7 @@
 "use client"
 
 import { usePathname } from "next/navigation"
-import { Menu, Search, Bell, Sun, Moon, Command } from "lucide-react"
+import { Menu, Search, Bell, Sun, Moon, Command, Shield } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useUIStore } from "@/stores/ui-store"
 import { useSession } from "next-auth/react"
@@ -67,7 +67,7 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border/50 bg-background/80 backdrop-blur-xl px-4 lg:px-6">
-      {/* Left: hamburger + logo + breadcrumb */}
+      {/* Left: hamburger + breadcrumb */}
       <div className="flex items-center gap-3">
         <button
           onClick={() => setSidebarOpen(true)}
@@ -75,17 +75,6 @@ export function Header() {
         >
           <Menu className="h-5 w-5" strokeWidth={1.75} />
         </button>
-
-        <Link href="/" className="hidden sm:flex items-center">
-          <Image
-            src="/logo-fruttagest.png"
-            alt="FruttaGest"
-            width={148}
-            height={40}
-            priority
-            className="h-6 w-auto"
-          />
-        </Link>
 
         <nav className="flex items-center gap-1.5 text-sm">
           {breadcrumbs.map((crumb, i) => (
@@ -103,9 +92,7 @@ export function Header() {
         </nav>
       </div>
 
-      {/* Right: search + actions */}
       <div className="flex items-center gap-2">
-        {/* Search */}
         <button
           onClick={() => setCommandPaletteOpen(true)}
           className="hidden sm:flex items-center gap-2 h-9 rounded-xl border border-border/50 bg-muted/50 px-3 text-sm text-muted-foreground hover:bg-muted transition-colors"
@@ -117,12 +104,10 @@ export function Header() {
           </kbd>
         </button>
 
-        {/* Notifications */}
         <button className="flex h-9 w-9 items-center justify-center rounded-xl hover:bg-muted transition-colors relative">
           <Bell className="h-5 w-5 text-muted-foreground" strokeWidth={1.75} />
         </button>
 
-        {/* Theme toggle */}
         <button
           onClick={toggleTheme}
           className="flex h-9 w-9 items-center justify-center rounded-xl hover:bg-muted transition-colors"
@@ -134,7 +119,16 @@ export function Header() {
           )}
         </button>
 
-        {/* Avatar */}
+        {session?.user?.role === "ADMIN" && (
+          <Link
+            href="/admin"
+            className="hidden sm:inline-flex items-center gap-1.5 h-9 rounded-xl border border-border/50 px-3 text-xs font-medium text-muted-foreground hover:bg-muted transition-colors"
+          >
+            <Shield className="h-4 w-4" strokeWidth={1.75} />
+            Admin
+          </Link>
+        )}
+
         {session?.user && (
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary font-medium text-sm ml-1">
             {session.user.name?.charAt(0)?.toUpperCase() || "U"}

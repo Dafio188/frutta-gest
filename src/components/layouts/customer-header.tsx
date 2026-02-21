@@ -57,12 +57,12 @@ export function CustomerHeader() {
 
         <Link href="/" className="hidden sm:flex items-center">
           <Image
-            src="/logo-fruttagest.png"
+            src="/LOGO.png"
             alt="FruttaGest"
-            width={148}
-            height={40}
+            width={200}
+            height={70}
             priority
-            className="h-6 w-auto"
+            className="h-10 w-auto"
           />
         </Link>
 

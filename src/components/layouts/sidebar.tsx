@@ -9,6 +9,7 @@
 
 import { usePathname } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   LayoutDashboard, ShoppingCart, ClipboardList, Truck,
@@ -59,18 +60,29 @@ export function Sidebar() {
         )}
       >
         {/* Header */}
-        <div className="flex h-16 items-center justify-between px-4 border-b border-border/50">
+        <div className="flex h-24 items-center justify-between px-4 border-b border-border/50">
           {!sidebarCollapsed && (
-            <Link href="/dashboard" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <Leaf className="h-5 w-5" strokeWidth={1.75} />
-              </div>
-              <span className="text-lg font-semibold tracking-tight">FruttaGest</span>
+            <Link href="/dashboard" className="flex items-center">
+              <Image
+                src="/LOGO.png"
+                alt="FruttaGest"
+                width={360}
+                height={120}
+                priority
+                className="h-20 w-auto"
+              />
             </Link>
           )}
           {sidebarCollapsed && (
-            <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Leaf className="h-5 w-5" strokeWidth={1.75} />
+            <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
+              <Image
+                src="/LOGO.png"
+                alt="FruttaGest"
+                width={36}
+                height={36}
+                priority
+                className="h-7 w-auto"
+              />
             </div>
           )}
           <button

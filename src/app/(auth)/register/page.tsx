@@ -10,9 +10,10 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 import { signIn } from "next-auth/react"
 import { motion } from "framer-motion"
-import { Mail, Lock, User, Leaf, Eye, EyeOff, Check, X } from "lucide-react"
+import { Mail, Lock, User, Eye, EyeOff, Check, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
@@ -75,7 +76,10 @@ export default function RegisterPage() {
       })
 
       if (result?.ok) {
-        router.push("/dashboard")
+        const { getSession } = await import("next-auth/react")
+        const session = await getSession()
+        const dest = session?.user?.role === "CUSTOMER" ? "/portale" : "/dashboard"
+        router.push(dest)
         router.refresh()
       }
     } catch {
@@ -89,9 +93,14 @@ export default function RegisterPage() {
     <motion.div variants={stagger} initial="hidden" animate="show" className="w-full max-w-md">
       <motion.div variants={fadeUp} className="glass-card p-8">
         <motion.div variants={fadeUp} className="flex flex-col items-center mb-8">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-[var(--shadow-md)] mb-4">
-            <Leaf className="h-8 w-8" strokeWidth={1.75} />
-          </div>
+          <Image
+            src="/LOGO.png"
+            alt="FruttaGest"
+            width={320}
+            height={120}
+            priority
+            className="mb-4 h-20 w-auto"
+          />
           <h1 className="text-2xl font-bold tracking-tight">Crea un account</h1>
           <p className="text-sm text-muted-foreground mt-1">Inizia a gestire la tua attivita</p>
         </motion.div>

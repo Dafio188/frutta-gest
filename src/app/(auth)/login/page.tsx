@@ -10,9 +10,10 @@
 import { Suspense, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 import { signIn } from "next-auth/react"
 import { motion } from "framer-motion"
-import { Mail, Lock, Leaf, Eye, EyeOff } from "lucide-react"
+import { Mail, Lock, Eye, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
@@ -112,11 +113,15 @@ function LoginContent() {
         transition={shake ? { duration: 0.4 } : undefined}
         className="glass-card p-8"
       >
-        {/* Logo */}
         <motion.div variants={fadeUp} className="flex flex-col items-center mb-8">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-[var(--shadow-md)] mb-4">
-            <Leaf className="h-8 w-8" strokeWidth={1.75} />
-          </div>
+          <Image
+            src="/LOGO.png"
+            alt="FruttaGest"
+            width={320}
+            height={120}
+            priority
+            className="mb-4 h-20 w-auto"
+          />
           <h1 className="text-2xl font-bold tracking-tight">Bentornato</h1>
           <p className="text-sm text-muted-foreground mt-1">Accedi al tuo gestionale</p>
         </motion.div>

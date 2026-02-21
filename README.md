@@ -103,8 +103,7 @@ frutta-gest/
 │   │   ├── utils.ts                  # Utilità (format, serialize)
 │   │   └── constants.ts              # Costanti, label, navigazione
 │   ├── stores/                       # Zustand stores
-│   ├── types/                        # Definizioni TypeScript
-│   └── middleware.ts                 # Protezione route
+│   └── types/                        # Definizioni TypeScript
 ├── prisma/
 │   └── schema.prisma                 # Schema DB (803 righe, 30+ modelli)
 └── package.json
@@ -198,6 +197,98 @@ Lo schema Prisma (`prisma/schema.prisma`) definisce **30+ modelli** che coprono 
 
 #### Componenti UI (shadcn/ui + Custom)
 - Button, Input, Badge (7 varianti), Card, Dialog, Tabs, Separator, Label
+
+---
+
+## Stato attuale Deploy & Infrastruttura (Feb 2026)
+
+### Vercel (Produzione)
+
+- **Hosting:** Vercel (account Davide, piano Hobby)
+- **Progetto attivo:** `frutta-gest`
+  - Repository collegato: `Dafio188/frutta-gest` (branch `main`)
+  - Eventuali progetti duplicati (es. `frutta-gest-6516`) non sono utilizzati in produzione
+- **Framework preset:** Next.js
+- **Build Command (override):**
+
+  ```bash
+  npm run build
+  ```
+
+  che esegue, da `package.json`:
+
+  ```json
+  "build": "prisma generate && next build && node scripts/create-middleware-nft.mjs"
+  ```
+
+- **Output directory:** default Next.js (`.next`)
+- **Ambiente di build:** Next.js 16 (Turbopack) + Node gestito da Vercel
+- **Middleware:** il vecchio `middleware.ts` globale è stato rimosso dal repository
+  - Vercel continua a generare internamente un proxy middleware per l’App Router
+  - Per evitare errori `ENOENT` su Vercel, dopo il build viene creato lo stub `.next/server/middleware.js.nft.json` tramite lo script:
+
+    ```bash
+    node scripts/create-middleware-nft.mjs
+    ```
+
+### Database attuale
+
+- **Tecnologia:** PostgreSQL
+- **ORM:** Prisma 7 (`prisma/schema.prisma`)
+- **Datasource:**
+
+  ```ts
+  // prisma.config.ts
+  export default defineConfig({
+    schema: "prisma/schema.prisma",
+    migrations: {
+      path: "prisma/migrations",
+      seed: "npx tsx prisma/seed.ts",
+    },
+    datasource: {
+      url: process.env["DATABASE_URL"],
+    },
+  })
+  ```
+
+- **Connessione:**
+  - In locale: stringa `DATABASE_URL` definita in `.env` (PostgreSQL di sviluppo)
+  - In produzione (Vercel): variabile d’ambiente `DATABASE_URL` configurata nella sezione **Settings → Environment Variables**
+  - Lo schema Prisma usa `provider = "postgresql"`, quindi è compatibile con provider gestiti (Neon, Railway, RDS, ecc.)
+
+### Stato funzionalità AI in produzione
+
+- **Libreria:** `openai@6.20.0`
+- **Chiave API:** letta da `process.env.OPENAI_API_KEY`
+- **Comportamento corrente:**
+  - `src/lib/ai/parse-order.ts`
+    - Se `OPENAI_API_KEY` **non è configurata**, la funzione non blocca la build:
+      - ritorna un ordine “vuoto” (lista articoli vuota) mantenendo solo il testo grezzo
+  - `src/lib/ai/transcribe-audio.ts`
+    - Se `OPENAI_API_KEY` non è presente, lancia un errore a runtime (le funzionalità di trascrizione audio richiedono per forza la chiave)
+- **Implicazione:**
+  - Il sito può essere deployato e usato anche senza chiave OpenAI (AI degradata ma non blocca l’applicazione)
+  - Per avere **parsing ordini da testo/audio** completamente funzionante va impostata `OPENAI_API_KEY` sia in locale che su Vercel
+
+### Riepilogo modifiche principali legate al deploy (Gen–Feb 2026)
+
+- Rimozione dell’output `standalone` in `next.config.ts` per compatibilità con Next 16 + Vercel
+- Refactor funzioni AI per spostare l’inizializzazione del client OpenAI **a runtime** e gestire in modo sicuro l’assenza di `OPENAI_API_KEY`
+- Eliminazione del `middleware.ts` globale per:
+  - evitare conflitti con il sistema di middleware interno di Next 16
+  - semplificare il deploy su Vercel (niente più errori su `middleware.js.nft.json`)
+- Introduzione dello script `scripts/create-middleware-nft.mjs` eseguito a fine build per creare il file NFT atteso da Vercel:
+  - Risolto l’errore ricorrente:
+
+    ```text
+    ENOENT: no such file or directory, open '/vercel/path0/.next/server/middleware.js.nft.json'
+    ```
+
+- Verifica completa del build locale tramite:
+  - `npm run lint`
+  - `npm run build`
+
+Questo è lo **stato di riferimento** da cui partire per i prossimi step (es. pubblicazione su Aruba o reintroduzione di un middleware di sicurezza più evoluto). 
 - DataTable con ordinamento, ricerca, paginazione, empty state
 - Toast/Notifiche animati
 - Command Palette (Cmd+K)
@@ -638,4 +729,3 @@ Pagamenti portale
 Admin: bottone attiva portale su cliente + toggle isFeatured
 
 Login: redirect condizionale per CUSTOMER
-

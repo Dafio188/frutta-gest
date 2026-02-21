@@ -8,7 +8,7 @@
 
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   Users,
   Shield,
@@ -31,13 +31,13 @@ import { formatDateTime } from "@/lib/utils"
 
 // ── Tipi ──────────────────────────────────────────────────────────────
 
-interface MockUser {
+interface AdminUser {
   id: string
   name: string
   email: string
-  role: "ADMIN" | "OPERATOR" | "VIEWER"
+  role: "ADMIN" | "OPERATOR" | "VIEWER" | "CUSTOMER"
   isActive: boolean
-  lastLoginAt: string
+  lastLoginAt: string | null
   createdAt: string
   emailVerified: string | null
   _count: {
@@ -45,106 +45,11 @@ interface MockUser {
     activityLogs: number
   }
 }
-
-// ── Mock Data ─────────────────────────────────────────────────────────
-
-const MOCK_USERS: MockUser[] = [
-  {
-    id: "u1",
-    name: "Mario Rossi",
-    email: "mario@fruttagest.it",
-    role: "ADMIN",
-    isActive: true,
-    lastLoginAt: "2026-02-13T08:45:00Z",
-    createdAt: "2024-06-01T10:00:00Z",
-    emailVerified: "2024-06-01T10:05:00Z",
-    _count: { orders: 128, activityLogs: 342 },
-  },
-  {
-    id: "u2",
-    name: "Lucia Bianchi",
-    email: "lucia@fruttagest.it",
-    role: "OPERATOR",
-    isActive: true,
-    lastLoginAt: "2026-02-13T07:30:00Z",
-    createdAt: "2024-08-15T09:00:00Z",
-    emailVerified: "2024-08-15T09:10:00Z",
-    _count: { orders: 95, activityLogs: 210 },
-  },
-  {
-    id: "u3",
-    name: "Giuseppe Verdi",
-    email: "giuseppe@fruttagest.it",
-    role: "OPERATOR",
-    isActive: true,
-    lastLoginAt: "2026-02-12T17:20:00Z",
-    createdAt: "2024-09-01T14:00:00Z",
-    emailVerified: "2024-09-01T14:05:00Z",
-    _count: { orders: 76, activityLogs: 180 },
-  },
-  {
-    id: "u4",
-    name: "Anna Esposito",
-    email: "anna@fruttagest.it",
-    role: "VIEWER",
-    isActive: false,
-    lastLoginAt: "2026-01-20T10:00:00Z",
-    createdAt: "2024-10-10T11:00:00Z",
-    emailVerified: "2024-10-10T11:05:00Z",
-    _count: { orders: 0, activityLogs: 45 },
-  },
-  {
-    id: "u5",
-    name: "Francesco Colombo",
-    email: "francesco@fruttagest.it",
-    role: "OPERATOR",
-    isActive: true,
-    lastLoginAt: "2026-02-12T15:10:00Z",
-    createdAt: "2025-01-05T08:00:00Z",
-    emailVerified: "2025-01-05T08:10:00Z",
-    _count: { orders: 54, activityLogs: 120 },
-  },
-  {
-    id: "u6",
-    name: "Elena Ferrari",
-    email: "elena@fruttagest.it",
-    role: "ADMIN",
-    isActive: true,
-    lastLoginAt: "2026-02-13T09:00:00Z",
-    createdAt: "2024-06-01T10:00:00Z",
-    emailVerified: "2024-06-01T10:02:00Z",
-    _count: { orders: 0, activityLogs: 290 },
-  },
-  {
-    id: "u7",
-    name: "Marco Ricci",
-    email: "marco@fruttagest.it",
-    role: "VIEWER",
-    isActive: true,
-    lastLoginAt: "2026-02-11T12:30:00Z",
-    createdAt: "2025-03-20T16:00:00Z",
-    emailVerified: null,
-    _count: { orders: 0, activityLogs: 18 },
-  },
-  {
-    id: "u8",
-    name: "Sofia Romano",
-    email: "sofia@fruttagest.it",
-    role: "OPERATOR",
-    isActive: true,
-    lastLoginAt: "2026-02-13T06:50:00Z",
-    createdAt: "2025-05-12T09:00:00Z",
-    emailVerified: "2025-05-12T09:08:00Z",
-    _count: { orders: 41, activityLogs: 95 },
-  },
-]
-
-// ── Costanti ──────────────────────────────────────────────────────────
-
 const ROLE_BADGE_VARIANT: Record<string, "default" | "info" | "warning"> = {
   ADMIN: "default",
   OPERATOR: "info",
   VIEWER: "warning",
+  CUSTOMER: "info",
 }
 
 // ── Componente Pagina ─────────────────────────────────────────────────
@@ -152,9 +57,29 @@ const ROLE_BADGE_VARIANT: Record<string, "default" | "info" | "warning"> = {
 export default function AdminUsersPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [actionMenuOpen, setActionMenuOpen] = useState<string | null>(null)
+  const [users, setUsers] = useState<AdminUser[]>([])
+  const [loading, setLoading] = useState(true)
+  const [updatingUserId, setUpdatingUserId] = useState<string | null>(null)
 
-  // Filtra utenti in base alla ricerca
-  const filteredUsers = MOCK_USERS.filter((user) => {
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const res = await fetch("/api/admin/users")
+        if (!res.ok) {
+          setUsers([])
+          return
+        }
+        const data = await res.json()
+        setUsers(data.users || [])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadUsers()
+  }, [])
+
+  const filteredUsers = users.filter((user) => {
     if (!searchQuery) return true
     const q = searchQuery.toLowerCase()
     return (
@@ -164,16 +89,69 @@ export default function AdminUsersPage() {
     )
   })
 
-  // Statistiche riepilogative
   const stats = {
-    total: MOCK_USERS.length,
-    active: MOCK_USERS.filter((u) => u.isActive).length,
-    admins: MOCK_USERS.filter((u) => u.role === "ADMIN").length,
-    operators: MOCK_USERS.filter((u) => u.role === "OPERATOR").length,
+    total: users.length,
+    active: users.filter((u) => u.isActive).length,
+    admins: users.filter((u) => u.role === "ADMIN").length,
+    operators: users.filter((u) => u.role === "OPERATOR").length,
   }
 
-  // Definizione colonne tabella
-  const columns: Column<MockUser>[] = [
+  const handleChangeRole = async (user: AdminUser, newRole: AdminUser["role"]) => {
+    if (user.role === newRole) {
+      setActionMenuOpen(null)
+      return
+    }
+
+    setUpdatingUserId(user.id)
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id, role: newRole }),
+      })
+
+      if (!res.ok) {
+        setUpdatingUserId(null)
+        setActionMenuOpen(null)
+        return
+      }
+
+      const data = await res.json()
+      if (data.user) {
+        setUsers((prev) => prev.map((u) => (u.id === user.id ? data.user : u)))
+      }
+    } finally {
+      setUpdatingUserId(null)
+      setActionMenuOpen(null)
+    }
+  }
+
+  const handleToggleActive = async (user: AdminUser) => {
+    setUpdatingUserId(user.id)
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id, isActive: !user.isActive }),
+      })
+
+      if (!res.ok) {
+        setUpdatingUserId(null)
+        setActionMenuOpen(null)
+        return
+      }
+
+      const data = await res.json()
+      if (data.user) {
+        setUsers((prev) => prev.map((u) => (u.id === user.id ? data.user : u)))
+      }
+    } finally {
+      setUpdatingUserId(null)
+      setActionMenuOpen(null)
+    }
+  }
+
+  const columns: Column<AdminUser>[] = [
     {
       key: "name",
       header: "Utente",
@@ -234,7 +212,7 @@ export default function AdminUsersPage() {
       sortable: true,
       render: (user) => (
         <span className="text-sm text-muted-foreground">
-          {formatDateTime(user.lastLoginAt)}
+          {user.lastLoginAt ? formatDateTime(user.lastLoginAt) : "Mai"}
         </span>
       ),
     },
@@ -260,6 +238,7 @@ export default function AdminUsersPage() {
               e.stopPropagation()
               setActionMenuOpen(actionMenuOpen === user.id ? null : user.id)
             }}
+            disabled={updatingUserId === user.id}
           >
             <MoreHorizontal className="h-4 w-4" strokeWidth={1.75} />
           </Button>
@@ -268,16 +247,23 @@ export default function AdminUsersPage() {
               className="absolute right-0 top-9 z-50 w-48 rounded-xl border border-border/50 bg-card p-1.5 shadow-[var(--shadow-lg)] animate-in fade-in-0 zoom-in-95"
               onClick={(e) => e.stopPropagation()}
             >
+              {Object.entries(ROLE_LABELS).map(([roleKey, label]) => (
+                <button
+                  key={roleKey}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted/80 transition-colors"
+                  onClick={() =>
+                    handleChangeRole(user, roleKey as AdminUser["role"])
+                  }
+                  disabled={updatingUserId === user.id}
+                >
+                  <Shield className="h-4 w-4" strokeWidth={1.75} />
+                  {label}
+                </button>
+              ))}
               <button
                 className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted/80 transition-colors"
-                onClick={() => setActionMenuOpen(null)}
-              >
-                <Shield className="h-4 w-4" strokeWidth={1.75} />
-                Modifica Ruolo
-              </button>
-              <button
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted/80 transition-colors"
-                onClick={() => setActionMenuOpen(null)}
+                onClick={() => handleToggleActive(user)}
+                disabled={updatingUserId === user.id}
               >
                 {user.isActive ? (
                   <>
@@ -292,13 +278,6 @@ export default function AdminUsersPage() {
                 )}
               </button>
               <div className="my-1 h-px bg-border/50" />
-              <button
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
-                onClick={() => setActionMenuOpen(null)}
-              >
-                <X className="h-4 w-4" strokeWidth={1.75} />
-                Elimina
-              </button>
             </div>
           )}
         </div>
@@ -394,7 +373,7 @@ export default function AdminUsersPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <DataTable<MockUser>
+                <DataTable<AdminUser>
                   columns={columns}
                   data={filteredUsers}
                   total={filteredUsers.length}

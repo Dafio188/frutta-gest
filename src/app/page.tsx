@@ -1,7 +1,6 @@
 import Link from "next/link"
 import Image from "next/image"
 import {
-  Leaf,
   ShoppingCart,
   BarChart3,
   Truck,
@@ -39,7 +38,7 @@ const features = [
       "Analisi vendite, margini e trend in tempo reale. Prendi decisioni basate sui dati, non sull'istinto.",
   },
   {
-    icon: Leaf,
+    icon: ShoppingCart,
     title: "Lista della Spesa",
     description:
       "Aggregazione intelligente di tutti gli ordini del giorno. Sai esattamente cosa comprare al mercato.",
@@ -200,14 +199,16 @@ export default function Home() {
       {/* NAVBAR                                        */}
       {/* ============================================= */}
       <nav className="sticky top-0 z-50 border-b border-border/40 bg-white/70 backdrop-blur-xl dark:bg-background/70">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-white">
-              <Leaf className="h-5 w-5" strokeWidth={1.75} />
-            </div>
-            <span className="text-lg font-semibold tracking-tight">
-              FruttaGest
-            </span>
+        <div className="mx-auto flex h-24 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          <Link href="/" className="flex items-center gap-3">
+            <Image
+              src="/LOGO.png"
+              alt="FruttaGest"
+              width={360}
+              height={120}
+              priority
+              className="h-20 w-auto"
+            />
           </Link>
           <div className="flex items-center gap-3">
             <Link
@@ -649,10 +650,14 @@ export default function Home() {
       {/* ============================================= */}
       <footer className="border-t border-border/40 bg-card/50 px-4 py-10 dark:bg-card/30 sm:px-6 lg:px-8">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 sm:flex-row">
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-white">
-              <Leaf className="h-4 w-4" strokeWidth={1.75} />
-            </div>
+          <div className="flex items-center gap-3">
+            <Image
+              src="/LOGO.png"
+              alt="FruttaGest"
+              width={260}
+              height={80}
+              className="h-12 w-auto"
+            />
             <span className="text-sm font-medium text-muted-foreground">
               &copy; 2026 FruttaGest. Tutti i diritti riservati.
             </span>

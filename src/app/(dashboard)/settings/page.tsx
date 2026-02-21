@@ -73,12 +73,68 @@ export default function SettingsPage() {
   const handleSave = async () => {
     setSaving(true)
     try {
-      await new Promise((r) => setTimeout(r, 800))
-      addToast({
-        type: "success",
-        title: "Impostazioni salvate",
-        description: "Le modifiche sono state applicate con successo.",
-      })
+      if (profile.newPassword || profile.confirmPassword || profile.currentPassword) {
+        if (!profile.currentPassword || !profile.newPassword || !profile.confirmPassword) {
+          addToast({
+            type: "error",
+            title: "Errore password",
+            description: "Compila tutti i campi password.",
+          })
+          setSaving(false)
+          return
+        }
+
+        if (profile.newPassword !== profile.confirmPassword) {
+          addToast({
+            type: "error",
+            title: "Errore password",
+            description: "Le nuove password non coincidono.",
+          })
+          setSaving(false)
+          return
+        }
+
+        const res = await fetch("/api/account/change-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            currentPassword: profile.currentPassword,
+            newPassword: profile.newPassword,
+          }),
+        })
+
+        const data = await res.json()
+
+        if (!res.ok) {
+          addToast({
+            type: "error",
+            title: "Errore password",
+            description: data.error || "Impossibile aggiornare la password.",
+          })
+          setSaving(false)
+          return
+        }
+
+        setProfile({
+          ...profile,
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        })
+
+        addToast({
+          type: "success",
+          title: "Password aggiornata",
+          description: "La tua password è stata modificata.",
+        })
+      } else {
+        await new Promise((r) => setTimeout(r, 800))
+        addToast({
+          type: "success",
+          title: "Impostazioni salvate",
+          description: "Le modifiche sono state applicate con successo.",
+        })
+      }
     } catch {
       addToast({
         type: "error",
