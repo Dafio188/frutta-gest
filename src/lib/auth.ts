@@ -15,7 +15,6 @@ import bcrypt from "bcryptjs"
 import { db } from "@/lib/db"
 import { loginSchema } from "@/lib/validations"
 import type { Role } from "@prisma/client"
-import type { Adapter } from "next-auth/adapters"
 
 declare module "next-auth" {
   interface Session {
@@ -90,7 +89,7 @@ providers.push(
 )
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: PrismaAdapter(db) as Adapter,
+  adapter: PrismaAdapter(db) as never,
   providers,
   pages: {
     signIn: "/login",
