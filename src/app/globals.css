@@ -27,6 +27,11 @@
     --radius: 0.75rem;
     --sidebar-width: 280px;
 
+    /* === BRAND COLORS === */
+    --brand-green: 142 76% 36%;  /* Deep Green for Distributori */
+    --brand-blue: 221 83% 53%;   /* Tech Blue for Grossisti */
+    --brand-orange: 24 95% 53%;  /* Vibrant Orange for Fruttivendolo */
+
     /* === GLASSMORPHISM === */
     --glass-bg: rgba(255, 255, 255, 0.72);
     --glass-border: rgba(255, 255, 255, 0.3);
@@ -82,6 +87,12 @@
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
+  
+  /* Brand Colors */
+  --color-brand-green: hsl(var(--brand-green));
+  --color-brand-blue: hsl(var(--brand-blue));
+  --color-brand-orange: hsl(var(--brand-orange));
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

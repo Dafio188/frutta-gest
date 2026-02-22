@@ -34,6 +34,7 @@ const suiteApps = [
       "Listini personalizzati",
       "Fatturazione automatica",
     ],
+    color: "brand-green",
   },
   {
     id: "fruttivendolo",
@@ -50,6 +51,7 @@ const suiteApps = [
       "E-commerce locale",
       "Gestione scarti",
     ],
+    color: "brand-orange",
   },
   {
     id: "grossisti",
@@ -66,6 +68,7 @@ const suiteApps = [
       "Contabilità semplificata",
       "Integrazione bilance",
     ],
+    color: "brand-blue",
   },
 ]
 
@@ -319,26 +322,28 @@ export default function Home() {
       {/* ============================================= */}
       <section className="relative overflow-hidden px-4 pb-20 pt-24 sm:px-6 sm:pb-28 sm:pt-32 lg:px-8">
         {/* Decorative gradient blobs */}
-        <div className="pointer-events-none absolute -top-40 left-1/2 h-[500px] w-[800px] -translate-x-1/2 rounded-full bg-gradient-to-br from-emerald-200/40 via-green-100/30 to-transparent blur-3xl dark:from-emerald-900/20 dark:via-green-900/10" />
-        <div className="pointer-events-none absolute right-0 top-20 h-[300px] w-[400px] rounded-full bg-gradient-to-l from-emerald-100/50 to-transparent blur-3xl dark:from-emerald-900/10" />
+        <div className="pointer-events-none absolute -top-40 left-1/2 h-[500px] w-[800px] -translate-x-1/2 rounded-full bg-gradient-to-br from-brand-green/20 via-brand-blue/20 to-brand-orange/20 blur-3xl dark:from-brand-green/10 dark:via-brand-blue/10" />
+        <div className="pointer-events-none absolute right-0 top-20 h-[300px] w-[400px] rounded-full bg-gradient-to-l from-brand-orange/20 to-transparent blur-3xl dark:from-brand-orange/10" />
 
         <div className="relative mx-auto max-w-4xl text-center">
           <div>
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-1.5 text-sm font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-400">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-brand-green/30 bg-brand-green/10 px-4 py-1.5 text-sm font-medium text-brand-green dark:border-brand-green/30 dark:bg-brand-green/10 dark:text-brand-green">
               <Zap className="h-3.5 w-3.5" strokeWidth={1.75} />
               Potenziato dall&apos;Intelligenza Artificiale
             </div>
 
             <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
               La Suite Completa per{" "}
-              <span className="bg-gradient-to-r from-emerald-600 to-green-500 bg-clip-text text-transparent dark:from-emerald-400 dark:to-green-400">
+              <span className="bg-gradient-to-r from-brand-green via-brand-blue to-brand-orange bg-clip-text text-transparent animate-gradient-x">
                 l&apos;Ortofrutta
               </span>
             </h1>
 
             <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
               Tre soluzioni integrate per digitalizzare l&apos;intera filiera:
-              Distributori, Grossisti e Fruttivendoli.
+              <span className="font-semibold text-brand-green"> Distributori</span>, 
+              <span className="font-semibold text-brand-blue"> Grossisti</span> e 
+              <span className="font-semibold text-brand-orange"> Fruttivendoli</span>.
               <span className="font-medium text-foreground block mt-2">
                 Un unico ecosistema per il tuo business.
               </span>
@@ -347,7 +352,7 @@ export default function Home() {
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Link
                 href="#suite"
-                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-8 text-base font-semibold text-primary-foreground shadow-lg shadow-emerald-500/20 transition-all hover:bg-primary/90 hover:shadow-xl hover:shadow-emerald-500/25 sm:w-auto"
+                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-green px-8 text-base font-semibold text-white shadow-lg shadow-brand-green/20 transition-all hover:bg-brand-green/90 hover:shadow-xl hover:shadow-brand-green/25 sm:w-auto"
               >
                 Scopri gli Applicativi
                 <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
@@ -389,20 +394,27 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-            {suiteApps.map((app) => (
+            {suiteApps.map((app) => {
+               const isGreen = app.color === 'brand-green';
+               const isBlue = app.color === 'brand-blue';
+               const isOrange = app.color === 'brand-orange';
+
+               const iconBg = isGreen ? 'bg-brand-green/10 text-brand-green' : isBlue ? 'bg-brand-blue/10 text-brand-blue' : 'bg-brand-orange/10 text-brand-orange';
+               const priceColor = isGreen ? 'text-brand-green' : isBlue ? 'text-brand-blue' : 'text-brand-orange';
+               const checkColor = isGreen ? 'text-brand-green' : isBlue ? 'text-brand-blue' : 'text-brand-orange';
+               const hoverShadow = isGreen ? 'hover:shadow-brand-green/20' : isBlue ? 'hover:shadow-brand-blue/20' : 'hover:shadow-brand-orange/20';
+               const badgeStyle = isGreen ? 'bg-brand-green/10 text-brand-green border-brand-green/20' : isBlue ? 'bg-brand-blue/10 text-brand-blue border-brand-blue/20' : 'bg-brand-orange/10 text-brand-orange border-brand-orange/20';
+
+               return (
               <div 
                 key={app.id} 
-                className="relative flex flex-col items-center text-center rounded-3xl border border-border/50 bg-card p-8 shadow-sm transition-all hover:shadow-md hover:shadow-emerald-500/5"
+                className={`relative flex flex-col items-center text-center rounded-3xl border border-border/50 bg-card p-8 shadow-sm transition-all hover:shadow-md ${hoverShadow}`}
               >
-                <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400">
+                <div className={`mb-6 flex h-14 w-14 items-center justify-center rounded-2xl ${iconBg}`}>
                   <app.icon className="h-7 w-7" strokeWidth={1.75} />
                 </div>
                 
-                <span className={`absolute top-8 right-8 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                  app.status === 'available' 
-                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300' 
-                    : 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300'
-                }`}>
+                <span className={`absolute top-8 right-8 inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${badgeStyle}`}>
                   {app.badge}
                 </span>
 
@@ -411,7 +423,7 @@ export default function Home() {
 
                 <div className="mt-5 mb-5 flex flex-col items-center gap-1 rounded-xl bg-muted/50 p-4 border border-border/50 w-full">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">€{app.price}</span>
+                    <span className={`text-2xl font-bold ${priceColor}`}>€{app.price}</span>
                     <span className="text-xs font-medium text-muted-foreground">una tantum</span>
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -422,17 +434,17 @@ export default function Home() {
                 <ul className="space-y-3 flex-1 w-full text-left">
                   {app.features.map((feature, i) => (
                     <li key={i} className="flex items-start gap-3 text-sm text-muted-foreground">
-                      <Check className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-500" />
+                      <Check className={`h-5 w-5 shrink-0 ${checkColor}`} />
                       <span>{feature}</span>
                     </li>
                   ))}
                 </ul>
 
-                <div className="mt-8">
+                <div className="mt-8 w-full">
                   {app.status === 'available' ? (
                     <Link
                       href="/register"
-                      className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90"
+                      className={`inline-flex h-11 w-full items-center justify-center rounded-xl px-4 text-sm font-semibold text-white transition-all shadow-lg hover:shadow-xl ${isGreen ? 'bg-brand-green hover:bg-brand-green/90 shadow-brand-green/20' : isBlue ? 'bg-brand-blue hover:bg-brand-blue/90 shadow-brand-blue/20' : 'bg-brand-orange hover:bg-brand-orange/90 shadow-brand-orange/20'}`}
                     >
                       Inizia Ora
                     </Link>
@@ -446,7 +458,7 @@ export default function Home() {
                   )}
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         </div>
       </section>
@@ -471,9 +483,9 @@ export default function Home() {
                 <thead>
                   <tr className="border-b border-border/50 bg-muted/30">
                     <th className="p-6 font-semibold text-foreground">Funzionalità</th>
-                    <th className="p-6 font-semibold text-emerald-700 dark:text-emerald-400 text-center w-40">Distributori</th>
-                    <th className="p-6 font-semibold text-muted-foreground text-center w-40">Fruttivendolo</th>
-                    <th className="p-6 font-semibold text-muted-foreground text-center w-40">Grossisti</th>
+                    <th className="p-6 font-semibold text-brand-green text-center w-40">Distributori</th>
+                    <th className="p-6 font-semibold text-brand-orange text-center w-40">Fruttivendolo</th>
+                    <th className="p-6 font-semibold text-brand-blue text-center w-40">Grossisti</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/50">
@@ -482,21 +494,21 @@ export default function Home() {
                       <td className="p-6 font-medium text-foreground">{feat.name}</td>
                       <td className="p-6 text-center">
                         {feat.distributori ? (
-                          <div className="flex justify-center"><Check className="h-5 w-5 text-emerald-600" /></div>
+                          <div className="flex justify-center"><Check className="h-5 w-5 text-brand-green" /></div>
                         ) : (
                           <div className="flex justify-center"><X className="h-5 w-5 text-muted-foreground/30" /></div>
                         )}
                       </td>
                       <td className="p-6 text-center">
                         {feat.fruttivendolo ? (
-                          <div className="flex justify-center"><Check className="h-5 w-5 text-emerald-600" /></div>
+                          <div className="flex justify-center"><Check className="h-5 w-5 text-brand-orange" /></div>
                         ) : (
                           <div className="flex justify-center"><X className="h-5 w-5 text-muted-foreground/30" /></div>
                         )}
                       </td>
                       <td className="p-6 text-center">
                         {feat.grossisti ? (
-                          <div className="flex justify-center"><Check className="h-5 w-5 text-emerald-600" /></div>
+                          <div className="flex justify-center"><Check className="h-5 w-5 text-brand-blue" /></div>
                         ) : (
                           <div className="flex justify-center"><X className="h-5 w-5 text-muted-foreground/30" /></div>
                         )}
