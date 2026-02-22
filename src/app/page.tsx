@@ -392,35 +392,34 @@ export default function Home() {
             {suiteApps.map((app) => (
               <div 
                 key={app.id} 
-                className="relative flex flex-col rounded-3xl border border-border/50 bg-card p-8 shadow-sm transition-all hover:shadow-md hover:shadow-emerald-500/5"
+                className="relative flex flex-col items-center text-center rounded-3xl border border-border/50 bg-card p-8 shadow-sm transition-all hover:shadow-md hover:shadow-emerald-500/5"
               >
-                <div className="mb-6 flex items-center justify-between">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400">
-                    <app.icon className="h-7 w-7" strokeWidth={1.75} />
-                  </div>
-                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                    app.status === 'available' 
-                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300' 
-                      : 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300'
-                  }`}>
-                    {app.badge}
-                  </span>
+                <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400">
+                  <app.icon className="h-7 w-7" strokeWidth={1.75} />
                 </div>
+                
+                <span className={`absolute top-8 right-8 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                  app.status === 'available' 
+                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300' 
+                    : 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300'
+                }`}>
+                  {app.badge}
+                </span>
 
                 <h3 className="text-xl font-bold text-foreground">{app.title}</h3>
                 <p className="mt-2 text-sm text-muted-foreground">{app.subtitle}</p>
 
-                <div className="mt-5 mb-5 flex flex-col gap-1 rounded-xl bg-muted/50 p-4 border border-border/50">
+                <div className="mt-5 mb-5 flex flex-col items-center gap-1 rounded-xl bg-muted/50 p-4 border border-border/50 w-full">
                   <div className="flex items-baseline gap-1">
                     <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">€{app.price}</span>
                     <span className="text-xs font-medium text-muted-foreground">una tantum</span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    + €{app.updateCost}/anno aggiornamenti
+                    Aggiornamento annuo €{app.updateCost}
                   </p>
                 </div>
 
-                <ul className="space-y-3 flex-1">
+                <ul className="space-y-3 flex-1 w-full text-left">
                   {app.features.map((feature, i) => (
                     <li key={i} className="flex items-start gap-3 text-sm text-muted-foreground">
                       <Check className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-500" />
