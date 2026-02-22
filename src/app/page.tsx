@@ -10,7 +10,68 @@ import {
   Shield,
   Zap,
   Smartphone,
+  Store,
+  ShoppingBasket,
+  Check,
+  X,
+  Info,
+  LayoutGrid,
 } from "lucide-react"
+
+const suiteApps = [
+  {
+    id: "distributori",
+    icon: Truck,
+    title: "FruttaGest Distributori",
+    subtitle: "Per chi consegna a ristoranti e hotel",
+    status: "available",
+    badge: "Disponibile Ora",
+    features: [
+      "Ordini da WhatsApp con AI",
+      "Gestione giri e consegne",
+      "Listini personalizzati",
+      "Fatturazione automatica",
+    ],
+  },
+  {
+    id: "grossisti",
+    icon: Store,
+    title: "FruttaGest Grossisti",
+    subtitle: "Per box al mercato e magazzini",
+    status: "coming_soon",
+    badge: "In Arrivo",
+    features: [
+      "Vendita al banco veloce",
+      "Gestione stoccaggio e lotti",
+      "Contabilità semplificata",
+      "Integrazione bilance",
+    ],
+  },
+  {
+    id: "fruttivendolo",
+    icon: ShoppingBasket,
+    title: "FruttaGest Fruttivendolo",
+    subtitle: "Per negozi al dettaglio",
+    status: "coming_soon",
+    badge: "In Arrivo",
+    features: [
+      "Punto cassa smart",
+      "Fidelity card clienti",
+      "E-commerce locale",
+      "Gestione scarti",
+    ],
+  },
+]
+
+const comparisonFeatures = [
+  { name: "Ordini WhatsApp AI", distributori: true, grossisti: false, fruttivendolo: false },
+  { name: "Gestione Magazzino", distributori: true, grossisti: true, fruttivendolo: true },
+  { name: "Giri di Consegna", distributori: true, grossisti: false, fruttivendolo: true },
+  { name: "Vendita al Banco", distributori: false, grossisti: true, fruttivendolo: true },
+  { name: "Fatturazione Elettronica", distributori: true, grossisti: true, fruttivendolo: true },
+  { name: "E-commerce B2B", distributori: true, grossisti: true, fruttivendolo: false },
+  { name: "E-commerce B2C", distributori: false, grossisti: false, fruttivendolo: true },
+]
 
 const features = [
   {
@@ -210,6 +271,26 @@ export default function Home() {
               className="h-20 w-auto"
             />
           </Link>
+          <div className="hidden items-center gap-8 md:flex">
+            <Link
+              href="#suite"
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Applicativi
+            </Link>
+            <Link
+              href="#confronto"
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Confronto
+            </Link>
+            <Link
+              href="/contact"
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Contatti
+            </Link>
+          </div>
           <div className="flex items-center gap-3">
             <Link
               href="/login"
@@ -243,36 +324,33 @@ export default function Home() {
             </div>
 
             <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-              Gestisci il tuo business{" "}
+              La Suite Completa per{" "}
               <span className="bg-gradient-to-r from-emerald-600 to-green-500 bg-clip-text text-transparent dark:from-emerald-400 dark:to-green-400">
-                ortofrutticolo
-              </span>{" "}
-              con semplicit&agrave;
+                l&apos;Ortofrutta
+              </span>
             </h1>
 
             <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl lg:mx-0">
-              Piattaforma online pensata per distributori che servono ristoranti,
-              supermercati, hotel e mense. Ordini da WhatsApp e vocali
-              trascritti con AI, bolle e fatture automatiche, gestione clienti e
-              report avanzati.{" "}
-              <span className="font-medium text-foreground">
-                Tutto in un&apos;unica piattaforma.
+              Tre soluzioni integrate per digitalizzare l&apos;intera filiera:
+              Distributori, Grossisti e Fruttivendoli.
+              <span className="font-medium text-foreground block mt-2">
+                Un unico ecosistema per il tuo business.
               </span>
             </p>
 
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Link
-                href="/register"
+                href="#suite"
                 className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-8 text-base font-semibold text-primary-foreground shadow-lg shadow-emerald-500/20 transition-all hover:bg-primary/90 hover:shadow-xl hover:shadow-emerald-500/25 sm:w-auto"
               >
-                Inizia Ora
+                Scopri gli Applicativi
                 <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
               </Link>
               <Link
-                href="/login"
+                href="/contact"
                 className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-border bg-background px-8 text-base font-semibold text-foreground transition-all hover:bg-accent sm:w-auto"
               >
-                Accedi
+                Richiedi Demo
               </Link>
             </div>
 
@@ -285,6 +363,136 @@ export default function Home() {
                 <Star className="h-4 w-4 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} />
                 Prova gratuita 14 giorni
               </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================= */}
+      {/* SUITE SECTION                                 */}
+      {/* ============================================= */}
+      <section id="suite" className="px-4 py-20 sm:px-6 sm:py-28 lg:px-8 bg-emerald-50/30 dark:bg-emerald-950/10">
+        <div className="mx-auto max-w-6xl">
+          <div className="mx-auto max-w-2xl text-center mb-16">
+            <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+              Gli Applicativi della Suite
+            </h2>
+            <p className="mt-4 text-lg text-muted-foreground">
+              Soluzioni specifiche per ogni ruolo nella filiera ortofrutticola, integrate e sincronizzate.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+            {suiteApps.map((app) => (
+              <div 
+                key={app.id} 
+                className="relative flex flex-col rounded-3xl border border-border/50 bg-card p-8 shadow-sm transition-all hover:shadow-md hover:shadow-emerald-500/5"
+              >
+                <div className="mb-6 flex items-center justify-between">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400">
+                    <app.icon className="h-7 w-7" strokeWidth={1.75} />
+                  </div>
+                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                    app.status === 'available' 
+                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300' 
+                      : 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300'
+                  }`}>
+                    {app.badge}
+                  </span>
+                </div>
+
+                <h3 className="text-xl font-bold text-foreground">{app.title}</h3>
+                <p className="mt-2 text-sm text-muted-foreground">{app.subtitle}</p>
+
+                <ul className="mt-8 space-y-3 flex-1">
+                  {app.features.map((feature, i) => (
+                    <li key={i} className="flex items-start gap-3 text-sm text-muted-foreground">
+                      <Check className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-500" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="mt-8">
+                  {app.status === 'available' ? (
+                    <Link
+                      href="/register"
+                      className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90"
+                    >
+                      Inizia Ora
+                    </Link>
+                  ) : (
+                    <button
+                      disabled
+                      className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-border bg-muted/50 px-4 text-sm font-semibold text-muted-foreground cursor-not-allowed"
+                    >
+                      Presto Disponibile
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================= */}
+      {/* COMPARISON SECTION                            */}
+      {/* ============================================= */}
+      <section id="confronto" className="px-4 pb-20 sm:px-6 sm:pb-28 lg:px-8">
+        <div className="mx-auto max-w-5xl">
+          <div className="mx-auto max-w-2xl text-center mb-12">
+            <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+              Confronto Funzionalità
+            </h2>
+            <p className="mt-4 text-lg text-muted-foreground">
+              Scopri quale applicativo della suite fa al caso tuo.
+            </p>
+          </div>
+
+          <div className="overflow-hidden rounded-3xl border border-border/50 bg-card/50 shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-border/50 bg-muted/30">
+                    <th className="p-6 font-semibold text-foreground">Funzionalità</th>
+                    <th className="p-6 font-semibold text-emerald-700 dark:text-emerald-400 text-center w-40">Distributori</th>
+                    <th className="p-6 font-semibold text-muted-foreground text-center w-40">Grossisti</th>
+                    <th className="p-6 font-semibold text-muted-foreground text-center w-40">Fruttivendolo</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/50">
+                  {comparisonFeatures.map((feat, i) => (
+                    <tr key={i} className="hover:bg-muted/20 transition-colors">
+                      <td className="p-6 font-medium text-foreground">{feat.name}</td>
+                      <td className="p-6 text-center">
+                        {feat.distributori ? (
+                          <div className="flex justify-center"><Check className="h-5 w-5 text-emerald-600" /></div>
+                        ) : (
+                          <div className="flex justify-center"><X className="h-5 w-5 text-muted-foreground/30" /></div>
+                        )}
+                      </td>
+                      <td className="p-6 text-center">
+                        {feat.grossisti ? (
+                          <div className="flex justify-center"><Check className="h-5 w-5 text-emerald-600" /></div>
+                        ) : (
+                          <div className="flex justify-center"><X className="h-5 w-5 text-muted-foreground/30" /></div>
+                        )}
+                      </td>
+                      <td className="p-6 text-center">
+                        {feat.fruttivendolo ? (
+                          <div className="flex justify-center"><Check className="h-5 w-5 text-emerald-600" /></div>
+                        ) : (
+                          <div className="flex justify-center"><X className="h-5 w-5 text-muted-foreground/30" /></div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="p-4 bg-muted/30 text-center text-xs text-muted-foreground border-t border-border/50">
+              * Funzionalità per Grossisti e Fruttivendoli sono in fase di sviluppo e potrebbero variare.
             </div>
           </div>
         </div>
@@ -327,10 +535,10 @@ export default function Home() {
         <div className="mx-auto max-w-6xl">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-              Uno sguardo dentro FruttaGest
+              Uno sguardo dentro il modulo Distributori
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
-              Alcune schermate reali della piattaforma, ispirate alla tua presentazione.
+              Alcune schermate reali della piattaforma FruttaGest Distributori.
             </p>
           </div>
           <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-3">
@@ -390,8 +598,7 @@ export default function Home() {
               Tutto ci&ograve; che serve al tuo ingrosso
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
-              Dalla ricezione degli ordini alla consegna, FruttaGest
-              digitalizza ogni passaggio del tuo lavoro quotidiano.
+              Funzionalit&agrave; specifiche di <strong>FruttaGest Distributori</strong>: dalla ricezione ordini alla consegna.
             </p>
           </div>
 
@@ -423,12 +630,12 @@ export default function Home() {
         <div className="mx-auto grid max-w-6xl grid-cols-1 gap-10 lg:grid-cols-[1.1fr,1fr] lg:items-center">
           <div>
             <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-              Pensato per chi vive di ortofrutta ogni giorno
+              Pensato per chi distribuisce ortofrutta
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
-              FruttaGest &egrave; progettato per i distributori che devono
-              coordinare centinaia di referenze, clienti esigenti e consegne
-              quotidiane con margini sotto pressione.
+              FruttaGest Distributori &egrave; progettato per gestire
+              centinaia di referenze, clienti esigenti e consegne
+              quotidiane.
             </p>
             <p className="mt-3 text-sm text-muted-foreground">
               Che tu serva pochi ristoranti premium o catene di supermercati,
@@ -629,11 +836,11 @@ export default function Home() {
       <section className="px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
         <div className="mx-auto max-w-3xl text-center">
           <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-            Pronto a digitalizzare il tuo business?
+            Inizia ora con FruttaGest Distributori
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
             Unisciti a centinaia di aziende ortofrutticole che hanno gi&agrave;
-            scelto FruttaGest per semplificare il proprio lavoro.
+            scelto la nostra piattaforma.
           </p>
           <Link
             href="/register"

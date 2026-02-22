@@ -231,6 +231,23 @@ Lo schema Prisma (`prisma/schema.prisma`) definisce **30+ modelli** che coprono 
     node scripts/create-middleware-nft.mjs
     ```
 
+### Flusso di lavoro (locale → GitHub → Vercel)
+
+- Sviluppo in locale sul repository `Dafio188/frutta-gest` usando il branch `main` (o branch dedicati per le feature).
+- Prima del push esecuzione dei comandi di verifica:
+  - `npm run lint`
+  - `npm run build`
+- Commit e push su GitHub:
+  - `git add .`
+  - `git commit -m "descrizione modifiche"`
+  - `git push origin main`
+- Vercel riceve automaticamente i push sul branch `main`, esegue la build (`npm run build`) e deploya su:
+  - `https://fruttagest.it` (produzione)
+  - `https://frutta-gest.vercel.app` (dominio tecnico di supporto).
+- Quando si aggiungono o modificano variabili d’ambiente:
+  - aggiornarle su Vercel in **Settings → Environment Variables** (Production),
+  - quindi lanciare un **Redeploy** dall’ultima distribuzione (non serve un nuovo push).
+
 ### Database attuale
 
 - **Tecnologia:** PostgreSQL
@@ -269,6 +286,30 @@ Lo schema Prisma (`prisma/schema.prisma`) definisce **30+ modelli** che coprono 
 - **Implicazione:**
   - Il sito può essere deployato e usato anche senza chiave OpenAI (AI degradata ma non blocca l’applicazione)
   - Per avere **parsing ordini da testo/audio** completamente funzionante va impostata `OPENAI_API_KEY` sia in locale che su Vercel
+
+### Aggiornamenti UI & Auth (Febbraio 2026)
+
+- Branding coerente su tutte le schermate:
+  - logo ingrandito in navbar home, footer, login/registrazione e sidebar dashboard
+  - logo nelle pagine di login e registrazione cliccabile verso la home (`/`)
+- Pagine legali pubbliche:
+  - `/privacy` — Informativa Privacy base in italiano
+  - `/terms` — Termini e Condizioni d’uso
+  - `/contact` — Pagina Contatti con rimando a davidefiore.com per i recapiti aggiornati
+  - link inseriti nel footer della home (Privacy, Termini, Contatti)
+  - aggiornato il proxy di protezione (`src/proxy.ts`) per mantenere queste route pubbliche (no redirect al login)
+- Login Google (OAuth) operativo:
+  - provider Google configurato in `src/lib/auth.ts` tramite `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET`
+  - bottone “Continua con Google” attivo in login e registrazione
+  - redirect autorizzati:
+    - `http://localhost:3650/api/auth/callback/google`
+    - `https://frutta-gest.vercel.app/api/auth/callback/google`
+    - `https://fruttagest.it/api/auth/callback/google`
+  - variabili d’ambiente configurate su Vercel (Production): `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED`, `AUTH_TRUST_HOST`, `AUTH_SECRET`, `NEXTAUTH_URL=https://fruttagest.it`
+- Domini di produzione:
+  - `https://fruttagest.it` (dominio principale)
+  - `https://www.fruttagest.it` (CNAME verso `fruttagest.it`)
+  - `https://frutta-gest.vercel.app` (dominio tecnico Vercel per anteprime/debug)
 
 ### Riepilogo modifiche principali legate al deploy (Gen–Feb 2026)
 

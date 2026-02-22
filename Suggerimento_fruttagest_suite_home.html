@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FruttaGest Suite - Soluzioni Ortofrutticole Complete</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            color: #1a1a1a;
+            background-color: #f8f9fa;
+            line-height: 1.6;
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(135deg, #f0fdf4 0%, #e0f7f4 100%);
+            padding: 2rem 0;
+            border-bottom: 1px solid #d1e7e4;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #16a34a;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo::before {
+            content: '🍎';
+            font-size: 2rem;
+        }
+
+        nav {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        nav a {
+            color: #1a1a1a;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        nav a:hover {
+            color: #16a34a;
+        }
+
+        .btn-primary {
+            background-color: #16a34a;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .btn-primary:hover {
+            background-color: #15803d;
+        }
+
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, #f0fdf4 0%, #e0f7f4 100%);
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+
+        .hero-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            color: #1a1a1a;
+            font-weight: 800;
+        }
+
+        .hero h1 .highlight {
+            color: #16a34a;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: #4b5563;
+            margin-bottom: 2rem;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-secondary {
+            background-color: white;
+            color: #16a34a;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            border: 2px solid #16a34a;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .btn-secondary:hover {
+            background-color: #f0fdf4;
+        }
+
+        /* Suite Section */
+        .suite-section {
+            max-width: 1200px;
+            margin: 4rem auto;
+            padding: 0 2rem;
+        }
+
+        .section-title {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .section-title h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: #1a1a1a;
+        }
+
+        .section-title p {
+            font-size: 1.1rem;
+            color: #4b5563;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Applications Grid */
+        .apps-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-bottom: 4rem;
+        }
+
+        .app-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            border: 2px solid transparent;
+        }
+
+        .app-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+            border-color: #16a34a;
+        }
+
+        .app-card-header {
+            padding: 2rem;
+            background: linear-gradient(135deg, #f0fdf4 0%, #e0f7f4 100%);
+            border-bottom: 2px solid #d1e7e4;
+        }
+
+        .app-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .app-card h3 {
+            font-size: 1.5rem;
+            color: #1a1a1a;
+            margin-bottom: 0.5rem;
+        }
+
+        .app-card-subtitle {
+            color: #16a34a;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .app-card-body {
+            padding: 2rem;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app-description {
+            color: #4b5563;
+            margin-bottom: 1.5rem;
+            line-height: 1.7;
+        }
+
+        .features-list {
+            list-style: none;
+            margin-bottom: 1.5rem;
+            flex-grow: 1;
+        }
+
+        .features-list li {
+            padding: 0.5rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+            color: #4b5563;
+            font-size: 0.95rem;
+        }
+
+        .features-list li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #16a34a;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .app-card-footer {
+            padding: 0 2rem 2rem;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .app-card-footer a {
+            flex: 1;
+            text-align: center;
+        }
+
+        /* Comparison Section */
+        .comparison-section {
+            background: white;
+            padding: 4rem 2rem;
+            margin: 4rem 0;
+            border-radius: 12px;
+        }
+
+        .comparison-section h2 {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 2rem;
+            color: #1a1a1a;
+        }
+
+        .comparison-table {
+            width: 100%;
+            max-width: 1000px;
+            margin: 0 auto;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+
+        .comparison-table th {
+            background-color: #f0fdf4;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #d1e7e4;
+            color: #1a1a1a;
+        }
+
+        .comparison-table td {
+            padding: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            color: #4b5563;
+        }
+
+        .comparison-table tr:hover {
+            background-color: #f9fafb;
+        }
+
+        .check-mark {
+            color: #16a34a;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        /* CTA Section */
+        .cta-section {
+            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+            color: white;
+            padding: 4rem 2rem;
+            text-align: center;
+            margin-top: 4rem;
+            border-radius: 12px;
+        }
+
+        .cta-section h2 {
+            font-size: 2.2rem;
+            margin-bottom: 1rem;
+        }
+
+        .cta-section p {
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .btn-white {
+            background-color: white;
+            color: #16a34a;
+            padding: 0.75rem 2rem;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            display: inline-block;
+        }
+
+        .btn-white:hover {
+            background-color: #f0fdf4;
+            transform: translateY(-2px);
+        }
+
+        /* Footer */
+        footer {
+            background-color: #1a1a1a;
+            color: white;
+            padding: 3rem 2rem;
+            text-align: center;
+            margin-top: 4rem;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            text-align: left;
+            margin-bottom: 2rem;
+        }
+
+        .footer-section h4 {
+            margin-bottom: 1rem;
+            color: #16a34a;
+        }
+
+        .footer-section a {
+            color: #b0b0b0;
+            text-decoration: none;
+            display: block;
+            margin-bottom: 0.5rem;
+            transition: color 0.3s ease;
+        }
+
+        .footer-section a:hover {
+            color: #16a34a;
+        }
+
+        .footer-bottom {
+            border-top: 1px solid #333;
+            padding-top: 2rem;
+            text-align: center;
+            color: #b0b0b0;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero p {
+                font-size: 1rem;
+            }
+
+            .apps-grid {
+                grid-template-columns: 1fr;
+            }
+
+            nav {
+                gap: 1rem;
+                font-size: 0.9rem;
+            }
+
+            .section-title h2 {
+                font-size: 1.8rem;
+            }
+
+            .comparison-table {
+                font-size: 0.85rem;
+            }
+
+            .comparison-table th,
+            .comparison-table td {
+                padding: 0.75rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="header-container">
+            <a href="#" class="logo">FruttaGest Suite</a>
+            <nav>
+                <a href="#apps">Applicativi</a>
+                <a href="#confronto">Confronto</a>
+                <a href="#contatti">Contatti</a>
+                <button class="btn-primary">Accedi</button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-container">
+            <h1>La Suite Completa per l'<span class="highlight">Ortofrutta</span></h1>
+            <p>Tre soluzioni integrate per gestire ogni segmento della filiera ortofrutticola: dai distributori ai mercati generali, fino al fruttivendolo al dettaglio.</p>
+            <div class="hero-buttons">
+                <button class="btn-primary">Scopri gli Applicativi</button>
+                <button class="btn-secondary">Richiedi Demo</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Suite Section -->
+    <section class="suite-section" id="apps">
+        <div class="section-title">
+            <h2>Gli Applicativi della Suite</h2>
+            <p>Soluzioni specifiche per ogni ruolo nella filiera ortofrutticola, integrate e sincronizzate in un'unica piattaforma.</p>
+        </div>
+
+        <div class="apps-grid">
+            <!-- App 1: FruttaGest Distributori -->
+            <div class="app-card">
+                <div class="app-card-header">
+                    <div class="app-icon">🚚</div>
+                    <h3>FruttaGest Distributori</h3>
+                    <p class="app-card-subtitle">Per ristoranti, supermercati e hotel</p>
+                </div>
+                <div class="app-card-body">
+                    <p class="app-description">Gestisci ordini da WhatsApp e vocali, crea bolle e fatture automatiche, monitora clienti e incassi in tempo reale.</p>
+                    <ul class="features-list">
+                        <li>Ordini intelligenti con AI</li>
+                        <li>Gestione clienti e CRM</li>
+                        <li>Bolle e fatture automatiche</li>
+                        <li>Report avanzati</li>
+                        <li>Mobile first</li>
+                    </ul>
+                </div>
+                <div class="app-card-footer">
+                    <a href="#" class="btn-primary">Scopri di più</a>
+                </div>
+            </div>
+
+            <!-- App 2: FruttaGest Grossisti -->
+            <div class="app-card">
+                <div class="app-card-header">
+                    <div class="app-icon">🏢</div>
+                    <h3>FruttaGest Grossisti</h3>
+                    <p class="app-card-subtitle">Mercati generali e commissionari</p>
+                </div>
+                <div class="app-card-body">
+                    <p class="app-description">Gestione completa del magazzino, clienti, fatturazione, CRM e Business Intelligence per decisioni strategiche.</p>
+                    <ul class="features-list">
+                        <li>Magazzino avanzato</li>
+                        <li>Gestione partite e commissioni</li>
+                        <li>Fatturazione integrata</li>
+                        <li>Business Intelligence</li>
+                        <li>Logistica e spedizioni</li>
+                    </ul>
+                </div>
+                <div class="app-card-footer">
+                    <a href="#" class="btn-primary">Scopri di più</a>
+                </div>
+            </div>
+
+            <!-- App 3: FruttaGest Fruttivendolo -->
+            <div class="app-card">
+                <div class="app-card-header">
+                    <div class="app-icon">🛒</div>
+                    <h3>FruttaGest Fruttivendolo</h3>
+                    <p class="app-card-subtitle">Negozio fisico + e-commerce</p>
+                </div>
+                <div class="app-card-body">
+                    <p class="app-description">Gestisci il tuo negozio dalla A alla Z: punto vendita, e-commerce integrato, magazzino e fidelizzazione clienti.</p>
+                    <ul class="features-list">
+                        <li>Gestione punto vendita</li>
+                        <li>E-commerce integrato</li>
+                        <li>Gestione clienti</li>
+                        <li>Magazzino e rifornimenti</li>
+                        <li>Marketing e promozioni</li>
+                    </ul>
+                </div>
+                <div class="app-card-footer">
+                    <a href="#" class="btn-primary">Scopri di più</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Comparison Section -->
+    <section class="comparison-section" id="confronto">
+        <h2>Quale Applicativo Scegliere?</h2>
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Funzionalità</th>
+                    <th>Distributori</th>
+                    <th>Grossisti</th>
+                    <th>Fruttivendolo</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Ordini da WhatsApp/Vocali</td>
+                    <td class="check-mark">✓</td>
+                    <td></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td>Gestione Magazzino</td>
+                    <td class="check-mark">✓</td>
+                    <td class="check-mark">✓</td>
+                    <td class="check-mark">✓</td>
+                </tr>
+                <tr>
+                    <td>CRM Clienti</td>
+                    <td class="check-mark">✓</td>
+                    <td class="check-mark">✓</td>
+                    <td class="check-mark">✓</td>
+                </tr>
+                <tr>
+                    <td>Fatturazione</td>
+                    <td class="check-mark">✓</td>
+                    <td class="check-mark">✓</td>
+                    <td class="check-mark">✓</td>
+                </tr>
+                <tr>
+                    <td>Business Intelligence</td>
+                    <td></td>
+                    <td class="check-mark">✓</td>
+                    <td class="check-mark">✓</td>
+                </tr>
+                <tr>
+                    <td>Gestione Partite/Commissioni</td>
+                    <td></td>
+                    <td class="check-mark">✓</td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td>E-commerce Integrato</td>
+                    <td></td>
+                    <td></td>
+                    <td class="check-mark">✓</td>
+                </tr>
+                <tr>
+                    <td>Punto Vendita Fisico</td>
+                    <td></td>
+                    <td></td>
+                    <td class="check-mark">✓</td>
+                </tr>
+                <tr>
+                    <td>Programmi Fedeltà</td>
+                    <td></td>
+                    <td></td>
+                    <td class="check-mark">✓</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="suite-section">
+            <h2>Pronto a Trasformare il Tuo Business?</h2>
+            <p>Scegli l'applicativo che fa per te e inizia la tua prova gratuita di 14 giorni. Nessuna carta di credito richiesta.</p>
+            <button class="btn-white">Inizia Ora</button>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>FruttaGest Suite</h4>
+                <a href="#">Chi Siamo</a>
+                <a href="#">Blog</a>
+                <a href="#">Roadmap</a>
+            </div>
+            <div class="footer-section">
+                <h4>Prodotti</h4>
+                <a href="#">Distributori</a>
+                <a href="#">Grossisti</a>
+                <a href="#">Fruttivendolo</a>
+            </div>
+            <div class="footer-section">
+                <h4>Supporto</h4>
+                <a href="#">Documentazione</a>
+                <a href="#">Centro Aiuto</a>
+                <a href="#">Contatti</a>
+            </div>
+            <div class="footer-section">
+                <h4>Legale</h4>
+                <a href="#">Privacy Policy</a>
+                <a href="#">Termini di Servizio</a>
+                <a href="#">Cookie Policy</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 FruttaGest Suite. Tutti i diritti riservati. | Potenziato dall'Intelligenza Artificiale</p>
+        </div>
+    </footer>
+</body>
+</html>
