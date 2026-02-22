@@ -24,6 +24,8 @@ const suiteApps = [
     icon: Truck,
     title: "FruttaGest Distributori",
     subtitle: "Per chi consegna a ristoranti e hotel",
+    price: "599,00",
+    updateCost: "299,00",
     status: "available",
     badge: "Disponibile Ora",
     features: [
@@ -38,6 +40,8 @@ const suiteApps = [
     icon: Store,
     title: "FruttaGest Grossisti",
     subtitle: "Per box al mercato e magazzini",
+    price: "1.599,00",
+    updateCost: "299,00",
     status: "coming_soon",
     badge: "In Arrivo",
     features: [
@@ -52,6 +56,8 @@ const suiteApps = [
     icon: ShoppingBasket,
     title: "FruttaGest Fruttivendolo",
     subtitle: "Per negozi al dettaglio",
+    price: "999,00",
+    updateCost: "299,00",
     status: "coming_soon",
     badge: "In Arrivo",
     features: [
@@ -330,7 +336,7 @@ export default function Home() {
               </span>
             </h1>
 
-            <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl lg:mx-0">
+            <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
               Tre soluzioni integrate per digitalizzare l&apos;intera filiera:
               Distributori, Grossisti e Fruttivendoli.
               <span className="font-medium text-foreground block mt-2">
@@ -404,7 +410,17 @@ export default function Home() {
                 <h3 className="text-xl font-bold text-foreground">{app.title}</h3>
                 <p className="mt-2 text-sm text-muted-foreground">{app.subtitle}</p>
 
-                <ul className="mt-8 space-y-3 flex-1">
+                <div className="mt-5 mb-5 flex flex-col gap-1 rounded-xl bg-muted/50 p-4 border border-border/50">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">€{app.price}</span>
+                    <span className="text-xs font-medium text-muted-foreground">una tantum</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    + €{app.updateCost}/anno aggiornamenti
+                  </p>
+                </div>
+
+                <ul className="space-y-3 flex-1">
                   {app.features.map((feature, i) => (
                     <li key={i} className="flex items-start gap-3 text-sm text-muted-foreground">
                       <Check className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-500" />
