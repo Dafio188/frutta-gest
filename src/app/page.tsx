@@ -36,28 +36,12 @@ const suiteApps = [
     ],
   },
   {
-    id: "grossisti",
-    icon: Store,
-    title: "FruttaGest Grossisti",
-    subtitle: "Per box al mercato e magazzini",
-    price: "1.599,00",
-    updateCost: "299,00",
-    status: "coming_soon",
-    badge: "In Arrivo",
-    features: [
-      "Vendita al banco veloce",
-      "Gestione stoccaggio e lotti",
-      "Contabilità semplificata",
-      "Integrazione bilance",
-    ],
-  },
-  {
     id: "fruttivendolo",
     icon: ShoppingBasket,
     title: "FruttaGest Fruttivendolo",
     subtitle: "Per negozi al dettaglio",
     price: "999,00",
-    updateCost: "299,00",
+    updateCost: "399,00",
     status: "coming_soon",
     badge: "In Arrivo",
     features: [
@@ -65,6 +49,22 @@ const suiteApps = [
       "Fidelity card clienti",
       "E-commerce locale",
       "Gestione scarti",
+    ],
+  },
+  {
+    id: "grossisti",
+    icon: Store,
+    title: "FruttaGest Grossisti",
+    subtitle: "Per box al mercato e magazzini",
+    price: "1.599,00",
+    updateCost: "499,00",
+    status: "coming_soon",
+    badge: "In Arrivo",
+    features: [
+      "Vendita al banco veloce",
+      "Gestione stoccaggio e lotti",
+      "Contabilità semplificata",
+      "Integrazione bilance",
     ],
   },
 ]
@@ -472,8 +472,8 @@ export default function Home() {
                   <tr className="border-b border-border/50 bg-muted/30">
                     <th className="p-6 font-semibold text-foreground">Funzionalità</th>
                     <th className="p-6 font-semibold text-emerald-700 dark:text-emerald-400 text-center w-40">Distributori</th>
-                    <th className="p-6 font-semibold text-muted-foreground text-center w-40">Grossisti</th>
                     <th className="p-6 font-semibold text-muted-foreground text-center w-40">Fruttivendolo</th>
+                    <th className="p-6 font-semibold text-muted-foreground text-center w-40">Grossisti</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/50">
@@ -488,14 +488,14 @@ export default function Home() {
                         )}
                       </td>
                       <td className="p-6 text-center">
-                        {feat.grossisti ? (
+                        {feat.fruttivendolo ? (
                           <div className="flex justify-center"><Check className="h-5 w-5 text-emerald-600" /></div>
                         ) : (
                           <div className="flex justify-center"><X className="h-5 w-5 text-muted-foreground/30" /></div>
                         )}
                       </td>
                       <td className="p-6 text-center">
-                        {feat.fruttivendolo ? (
+                        {feat.grossisti ? (
                           <div className="flex justify-center"><Check className="h-5 w-5 text-emerald-600" /></div>
                         ) : (
                           <div className="flex justify-center"><X className="h-5 w-5 text-muted-foreground/30" /></div>
