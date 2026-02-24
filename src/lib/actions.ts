@@ -26,7 +26,7 @@ import {
 } from "@/lib/validations"
 import { serialize } from "@/lib/utils"
 import type { PaginationParams } from "@/types"
-import type { Prisma } from "@prisma/client"
+import { type Prisma, ProductUnit } from "@prisma/client"
 
 // ============================================================
 // HELPERS
@@ -2179,7 +2179,8 @@ export async function generateShoppingListFromOrders(date: string) {
   const productMap = new Map<
     string,
     {
-      productId: string
+      productId: string | null
+      productName: string
       totalQuantity: number
       unit: string
       supplierId: string | null
@@ -2189,16 +2190,18 @@ export async function generateShoppingListFromOrders(date: string) {
 
   for (const order of orders) {
     for (const item of order.items) {
-      if (!item.productId || !item.product) continue
-
-      const existing = productMap.get(item.productId)
-      const preferredSupplier = item.product.supplierProducts[0]
+      // Supporta sia prodotti a catalogo che custom (senza productId)
+      const key = item.productId || `custom:${item.productName}`
+      
+      const existing = productMap.get(key)
+      const preferredSupplier = item.product?.supplierProducts?.[0]
 
       if (existing) {
         existing.totalQuantity += Number(item.quantity)
       } else {
-        productMap.set(item.productId, {
+        productMap.set(key, {
           productId: item.productId,
+          productName: item.product?.name || item.productName || "Prodotto Sconosciuto",
           totalQuantity: Number(item.quantity),
           unit: item.unit,
           supplierId: preferredSupplier?.supplierId ?? null,
@@ -2209,7 +2212,10 @@ export async function generateShoppingListFromOrders(date: string) {
   }
 
   // Calcola giacenza attuale per ogni prodotto nella lista
-  const productIds = Array.from(productMap.keys())
+  const productIds = Array.from(productMap.values())
+    .map((p) => p.productId)
+    .filter((id): id is string => id !== null)
+
   const stockMovements = await db.stockMovement.findMany({
     where: { productId: { in: productIds } },
     select: { productId: true, type: true, quantity: true },
@@ -2228,10 +2234,11 @@ export async function generateShoppingListFromOrders(date: string) {
 
   // Prepara items con giacenza e fabbisogno netto
   const listItems = Array.from(productMap.values()).map((item) => {
-    const availableStock = Math.max(0, stockByProduct.get(item.productId) || 0)
+    const availableStock = item.productId ? Math.max(0, stockByProduct.get(item.productId) || 0) : 0
     const netQuantity = Math.max(0, item.totalQuantity - availableStock)
     return {
       productId: item.productId,
+      productName: item.productName,
       totalQuantity: item.totalQuantity,
       availableStock,
       netQuantity,
@@ -2389,6 +2396,7 @@ export async function createPurchaseOrdersFromShoppingList(shoppingListId: strin
         subtotal += lineTotal
         return {
           productId: item.productId,
+          productName: item.productName || item.product?.name,
           quantity: qty,
           unit: item.unit,
           unitPrice,
@@ -2537,7 +2545,10 @@ export async function getPurchaseOrder(id: string) {
   if (!po) throw new Error("Ordine fornitore non trovato")
 
   // Load product info for each item
-  const productIds = po.items.map((i) => i.productId)
+  const productIds = po.items
+    .map((i) => i.productId)
+    .filter((id): id is string => id !== null)
+
   const products = await db.product.findMany({
     where: { id: { in: productIds } },
     include: { category: true },
@@ -2546,7 +2557,7 @@ export async function getPurchaseOrder(id: string) {
 
   const itemsWithProducts = po.items.map((item) => ({
     ...item,
-    product: productMap[item.productId] || null,
+    product: item.productId ? (productMap[item.productId] || null) : null,
   }))
 
   return serialize({ ...po, items: itemsWithProducts })
@@ -2715,22 +2726,26 @@ export async function updatePurchaseOrderStatus(id: string, status: string) {
   // Quando merce ricevuta: CARICO magazzino + auto fattura fornitore
   if (status === "RECEIVED" && po.items.length > 0) {
     // 1. CARICO automatico magazzino
-    await db.$transaction(
-      po.items.map((item) =>
-        db.stockMovement.create({
-          data: {
-            productId: item.productId,
-            type: "CARICO",
-            quantity: item.quantity,
-            unit: item.unit,
-            reason: `Carico da ${po.poNumber}`,
-            referenceType: "PURCHASE_ORDER",
-            referenceId: po.id,
-            createdById: session.user.id,
-          },
-        })
+    const itemsWithProduct = po.items.filter((item) => item.productId !== null)
+    
+    if (itemsWithProduct.length > 0) {
+      await db.$transaction(
+        itemsWithProduct.map((item) =>
+          db.stockMovement.create({
+            data: {
+              productId: item.productId!,
+              type: "CARICO",
+              quantity: item.quantity,
+              unit: item.unit,
+              reason: `Carico da ${po.poNumber}`,
+              referenceType: "PURCHASE_ORDER",
+              referenceId: po.id,
+              createdById: session.user.id,
+            },
+          })
+        )
       )
-    )
+    }
 
     // 2. Auto-crea fattura fornitore collegata con items
     const invoiceNumber = await getNextNumber("SUPPLIER_INVOICE")
@@ -2740,7 +2755,7 @@ export async function updatePurchaseOrderStatus(id: string, status: string) {
 
     const invoiceItems = po.items.map((item, index) => ({
       productId: item.productId,
-      description: item.product?.name || "Articolo",
+      description: item.productName || item.product?.name || "Articolo",
       quantity: item.quantity,
       unit: item.unit,
       unitPrice: item.unitPrice,
@@ -3362,6 +3377,7 @@ export async function getMarginReport() {
   // Build purchase cost map
   const purchaseCostMap: Record<string, { totalCost: number; totalQty: number }> = {}
   for (const item of poItems) {
+    if (!item.productId) continue
     if (!purchaseCostMap[item.productId]) {
       purchaseCostMap[item.productId] = { totalCost: 0, totalQty: 0 }
     }
@@ -4542,7 +4558,7 @@ export async function toggleProductFeatured(productId: string) {
   return serialize(updated)
 }
 
-export async function scanAndLinkImages() {
+export async function scanAndSyncProducts() {
   const session = await requireAuth()
   const fs = await import("fs")
   const path = await import("path")
@@ -4558,49 +4574,124 @@ export async function scanAndLinkImages() {
 
   const files = await fsPromises.readdir(productsDir)
   const products = await db.product.findMany()
+  const categories = await db.productCategory.findMany()
+
+  // Ensure at least one category exists
+  let defaultCategoryId = categories[0]?.id
+  if (!defaultCategoryId) {
+    const newCat = await db.productCategory.create({
+      data: {
+        name: "DA CATALOGARE",
+        slug: "da-catalogare",
+        type: "FRUTTA", // Default type
+        description: "Prodotti importati automaticamente",
+      }
+    })
+    defaultCategoryId = newCat.id
+  }
 
   let updatedCount = 0
-  const validExtensions = [".jpg", ".jpeg", ".png", ".webp", ".gif"]
+  let createdCount = 0
+  const validExtensions = [".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg"]
 
-  for (const product of products) {
-    if (product.image) continue
+  // Helper to slugify name
+  const nameToSlug = (name: string) => {
+    return name
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/['']/g, '-')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .replace(/-+/g, '-')
+  }
 
-    let matchedFile = files.find((file) => {
-      const ext = path.extname(file).toLowerCase()
-      if (!validExtensions.includes(ext)) return false
-      
-      const nameWithoutExt = path.basename(file, ext)
-      return nameWithoutExt === product.slug
-    })
+  // Helper to guess unit
+  const guessUnit = (filename: string): ProductUnit => {
+    const lower = filename.toLowerCase()
+    if (lower.includes("pz") || lower.includes("pezzo") || lower.includes("pezzi")) return "PEZZI"
+    if (lower.includes("mazzo") || lower.includes("mazzi") || lower.includes("mz")) return "MAZZO"
+    if (lower.includes("vaschetta") || lower.includes("vasetto")) return "VASETTO"
+    if (lower.includes("cassetta") || lower.includes("cassa")) return "CASSETTA"
+    if (lower.includes("grappolo")) return "GRAPPOLO"
+    if (lower.includes("sacchetto") || lower.includes("busta")) return "SACCHETTO"
+    if (lower.match(/\d+gr/) || lower.match(/\d+g\b/)) return "PEZZI" // Usually fixed weight packs are sold as pieces
+    return "KG"
+  }
 
-    if (!matchedFile) {
-      matchedFile = files.find((file) => {
-        const ext = path.extname(file).toLowerCase()
-        if (!validExtensions.includes(ext)) return false
-        
-        const nameWithoutExt = path.basename(file, ext)
-        return nameWithoutExt.startsWith(product.slug + "-") || nameWithoutExt.startsWith(product.slug + "_")
-      })
+  // Helper to format name from filename
+  const filenameToName = (filename: string) => {
+    const nameWithoutExt = path.basename(filename, path.extname(filename))
+    // Replace hyphens/underscores with spaces
+    let name = nameWithoutExt.replace(/[-_]/g, " ")
+    // Remove "dup1", "dup2" etc suffix if present
+    name = name.replace(/\sdup\d+$/, "")
+    // Capitalize words
+    return name.replace(/\b\w/g, l => l.toUpperCase())
+  }
+
+  for (const file of files) {
+    const ext = path.extname(file).toLowerCase()
+    if (!validExtensions.includes(ext)) continue
+
+    const productName = filenameToName(file)
+    const productSlug = nameToSlug(productName)
+    const imagePath = `/images/products/${file}`
+    
+    // Find existing product by slug or by exact image match
+    let existingProduct = products.find(p => p.slug === productSlug || p.image === imagePath)
+
+    // Try finding by name if slug doesn't match (fuzzy)
+    if (!existingProduct) {
+       existingProduct = products.find(p => nameToSlug(p.name) === productSlug)
     }
 
-    if (matchedFile) {
-      const imagePath = `/images/products/${matchedFile}`
+    if (existingProduct) {
+      // Update image if missing or different
+      if (existingProduct.image !== imagePath) {
+        await db.product.update({
+          where: { id: existingProduct.id },
+          data: { image: imagePath },
+        })
+        updatedCount++
+      }
+    } else {
+      // CREATE NEW PRODUCT
+      const unit = guessUnit(file)
       
-      await db.product.update({
-        where: { id: product.id },
-        data: { image: imagePath },
+      // Ensure slug is unique in DB (though we checked memory, DB is authority)
+      let uniqueSlug = productSlug
+      let counter = 1
+      while (await db.product.count({ where: { slug: uniqueSlug } }) > 0) {
+        uniqueSlug = `${productSlug}-${counter}`
+        counter++
+      }
+
+      await db.product.create({
+        data: {
+          name: productName,
+          slug: uniqueSlug,
+          categoryId: defaultCategoryId,
+          unit: unit,
+          defaultPrice: 0,
+          vatRate: 4,
+          isAvailable: true,
+          image: imagePath,
+        }
       })
-      updatedCount++
+      createdCount++
     }
   }
   
-  if (updatedCount > 0) {
-    await logActivity(session.user.id, "LINK_IMAGES", "Product", "batch", {
-      count: updatedCount,
+  if (updatedCount > 0 || createdCount > 0) {
+    await logActivity(session.user.id, "SYNC_PRODUCTS", "Product", "batch", {
+      updated: updatedCount,
+      created: createdCount
     })
     revalidatePath("/catalogo")
     revalidatePath("/portale/catalogo")
+    revalidatePath("/prodotti")
   }
 
-  return { success: true, count: updatedCount }
+  return { success: true, updated: updatedCount, created: createdCount }
 }

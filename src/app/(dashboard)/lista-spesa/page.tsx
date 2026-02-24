@@ -87,7 +87,7 @@ export default function ListaSpesaPage() {
         getShoppingLists({ pageSize: 1 }),
         getSuppliers({ pageSize: 100 }),
       ])
-      const parsed = result as unknown as { data: { id: string; date: string; status: string; items: { id: string; totalQuantity: number; availableStock: number; netQuantity: number; unit: string; isOrdered: boolean; supplierId: string | null; product: { name: string; category: { name: string; slug: string } | null }; supplier: { id: string; companyName: string } | null }[] }[] }
+      const parsed = result as unknown as { data: { id: string; date: string; status: string; items: { id: string; totalQuantity: number; availableStock: number; netQuantity: number; unit: string; isOrdered: boolean; supplierId: string | null; productName?: string; product: { name: string; category: { name: string; slug: string } | null } | null; supplier: { id: string; companyName: string } | null }[] }[] }
       const suppParsed = suppResult as unknown as { data: { id: string; companyName: string }[] }
       setSuppliers(suppParsed.data.map((s) => ({ id: s.id, companyName: s.companyName })))
 
@@ -98,7 +98,7 @@ export default function ListaSpesaPage() {
         setListDate(list.date)
         setItems(list.items.map((item) => ({
           id: item.id,
-          productName: item.product?.name || "—",
+          productName: item.product?.name || item.productName || "—",
           category: item.product?.category?.slug || "ALTRO",
           totalQuantity: item.totalQuantity,
           availableStock: item.availableStock || 0,

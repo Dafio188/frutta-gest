@@ -18,7 +18,7 @@ import { EmptyState } from "@/components/ui/empty-state"
 import { PageTransition } from "@/components/animations/page-transition"
 import { formatCurrency } from "@/lib/utils"
 import { PRODUCT_UNIT_LABELS, PRODUCT_CATEGORY_LABELS } from "@/lib/constants"
-import { getProducts, scanAndLinkImages } from "@/lib/actions"
+import { getProducts, deleteProduct, scanAndSyncProducts } from "@/lib/actions"
 import { useUIStore } from "@/stores/ui-store"
 import { RefreshCw } from "lucide-react"
 
@@ -64,7 +64,7 @@ export default function CatalogoPage() {
   const handleLinkImages = async () => {
     setIsLinking(true)
     try {
-      const result = await scanAndLinkImages()
+      const result = await scanAndSyncProducts()
       if ('error' in result) {
         addToast({
           title: "Errore",
@@ -73,8 +73,8 @@ export default function CatalogoPage() {
         })
       } else {
         addToast({
-          title: "Immagini collegate",
-          description: `Sono state collegate ${result.count} nuove immagini.`,
+          title: "Sincronizzazione completata",
+          description: `Aggiornati: ${result.updated}, Creati: ${result.created} prodotti.`,
           type: "success",
         })
         loadProducts()
@@ -82,7 +82,7 @@ export default function CatalogoPage() {
     } catch (error) {
       addToast({
         title: "Errore",
-        description: "Impossibile collegare le immagini.",
+        description: "Impossibile sincronizzare i prodotti.",
         type: "error",
       })
     } finally {

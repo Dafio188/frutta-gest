@@ -1,11 +1,3 @@
-/**
- * FruttaGest - Schema Database Completo
- *
- * Gestionale vendite prodotti ortofrutticoli per ristoranti e supermercati.
- * Include: catalogo prodotti, ordini multi-canale, DDT, fatturazione,
- * gestione finanziaria, integrazioni WhatsApp/Audio AI.
- */
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,47 +6,28 @@ datasource db {
   provider = "postgresql"
 }
 
-// ============================================================
-// AUTH & USER
-// ============================================================
-
-enum Role {
-  ADMIN
-  OPERATOR
-  VIEWER
-  CUSTOMER
-}
-
-enum Theme {
-  LIGHT
-  DARK
-  SYSTEM
-}
-
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?
-  role          Role      @default(OPERATOR)
-  isActive      Boolean   @default(true)
-  lastLoginAt   DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  customerId    String?   @unique
-
-  accounts      Account[]
-  sessions      Session[]
-  preferences   UserPreferences?
-  activityLogs  ActivityLog[]
-  orders        Order[]
+  id             String           @id @default(cuid())
+  name           String?
+  email          String           @unique
+  emailVerified  DateTime?
+  image          String?
+  password       String?
+  role           Role             @default(OPERATOR)
+  isActive       Boolean          @default(true)
+  lastLoginAt    DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  customerId     String?          @unique
+  accounts       Account[]
+  activityLogs   ActivityLog[]
   deliveryNotes  DeliveryNote[]
   invoices       Invoice[]
-  stockMovements StockMovement[] @relation("StockMovements")
-  customer       Customer? @relation(fields: [customerId], references: [id])
+  orders         Order[]
+  sessions       Session[]
+  stockMovements StockMovement[]  @relation("StockMovements")
+  customer       Customer?        @relation(fields: [customerId], references: [id])
+  preferences    UserPreferences?
 }
 
 model UserPreferences {
@@ -63,8 +36,7 @@ model UserPreferences {
   theme         Theme   @default(SYSTEM)
   language      String  @default("it")
   notifications Boolean @default(true)
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Account {
@@ -73,14 +45,13 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id_token          String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -101,31 +72,6 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-// ============================================================
-// CATALOGO PRODOTTI
-// ============================================================
-
-enum ProductUnit {
-  KG
-  G
-  PEZZI
-  CASSETTA
-  MAZZO
-  GRAPPOLO
-  VASETTO
-  SACCHETTO
-}
-
-enum ProductCategoryType {
-  FRUTTA
-  VERDURA
-  ORTAGGI
-  ERBE_AROMATICHE
-  SPEZIE
-  FRUTTA_ESOTICA
-  FRUTTA_SECCA
-}
-
 model ProductCategory {
   id          String              @id @default(cuid())
   name        String              @unique
@@ -136,83 +82,58 @@ model ProductCategory {
   sortOrder   Int                 @default(0)
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
-
-  products Product[]
+  products    Product[]
 }
 
 model Product {
-  id               String      @id @default(cuid())
-  name             String
-  slug             String      @unique
-  categoryId       String
-  unit             ProductUnit @default(KG)
-  defaultPrice     Decimal     @db.Decimal(10, 2)
-  costPrice        Decimal?    @db.Decimal(10, 2)
-  isAvailable      Boolean     @default(true)
-  seasonalFrom     Int?
-  seasonalTo       Int?
-  image            String?
-  description      String?
-  sku              String?     @unique
-  vatRate          Decimal     @default(4) @db.Decimal(4, 2)
-  minOrderQuantity Decimal?    @db.Decimal(10, 3)
-  isFeatured       Boolean     @default(false)
-  featuredUntil    DateTime?
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
-
-  category              ProductCategory       @relation(fields: [categoryId], references: [id])
-  orderItems            OrderItem[]
-  deliveryNoteItems     DeliveryNoteItem[]
-  invoiceItems          InvoiceItem[]
-  purchaseOrderItems    PurchaseOrderItem[]
-  supplierInvoiceItems  SupplierInvoiceItem[]
-  shoppingListItems     ShoppingListItem[]
-  supplierProducts      SupplierProduct[]
-  customerPrices        CustomerProductPrice[]
-  stockMovements        StockMovement[]
+  id                   String                 @id @default(cuid())
+  name                 String
+  slug                 String                 @unique
+  categoryId           String
+  unit                 ProductUnit            @default(KG)
+  defaultPrice         Decimal                @db.Decimal(10, 2)
+  costPrice            Decimal?               @db.Decimal(10, 2)
+  isAvailable          Boolean                @default(true)
+  seasonalFrom         Int?
+  seasonalTo           Int?
+  image                String?
+  description          String?
+  sku                  String?                @unique
+  vatRate              Decimal                @default(4) @db.Decimal(4, 2)
+  minOrderQuantity     Decimal?               @db.Decimal(10, 3)
+  isFeatured           Boolean                @default(false)
+  featuredUntil        DateTime?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  customerPrices       CustomerProductPrice[]
+  deliveryNoteItems    DeliveryNoteItem[]
+  invoiceItems         InvoiceItem[]
+  orderItems           OrderItem[]
+  category             ProductCategory        @relation(fields: [categoryId], references: [id])
+  purchaseOrderItems   PurchaseOrderItem[]
+  shoppingListItems    ShoppingListItem[]
+  stockMovements       StockMovement[]
+  supplierInvoiceItems SupplierInvoiceItem[]
+  supplierProducts     SupplierProduct[]
 
   @@index([categoryId])
   @@index([isAvailable])
 }
 
 model CustomerProductPrice {
-  id         String  @id @default(cuid())
+  id         String   @id @default(cuid())
   customerId String
   productId  String
-  price      Decimal @db.Decimal(10, 2)
-
-  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  price      Decimal  @db.Decimal(10, 2)
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([customerId, productId])
 }
 
-// ============================================================
-// CLIENTI
-// ============================================================
-
-enum CustomerType {
-  RISTORANTE
-  SUPERMERCATO
-  BAR
-  HOTEL
-  MENSA
-  GASTRONOMIA
-  ALTRO
-}
-
-enum PaymentMethod {
-  CONTANTI
-  BONIFICO
-  ASSEGNO
-  RIBA
-  CARTA
-}
-
 model Customer {
-  id                    String        @id @default(cuid())
-  code                  String        @unique
+  id                    String                 @id @default(cuid())
+  code                  String                 @unique
   companyName           String
   type                  CustomerType
   vatNumber             String?
@@ -223,154 +144,120 @@ model Customer {
   city                  String
   province              String
   postalCode            String
-  country               String        @default("IT")
+  country               String                 @default("IT")
   phone                 String?
   email                 String?
   deliveryZone          String?
   preferredDeliveryTime String?
   deliveryNotes         String?
-  paymentMethod         PaymentMethod @default(BONIFICO)
-  paymentTermsDays      Int           @default(30)
-  creditLimit           Decimal?      @db.Decimal(10, 2)
-  isActive              Boolean       @default(true)
+  paymentMethod         PaymentMethod          @default(BONIFICO)
+  paymentTermsDays      Int                    @default(30)
+  creditLimit           Decimal?               @db.Decimal(10, 2)
+  isActive              Boolean                @default(true)
   notes                 String?
-  createdAt             DateTime      @default(now())
-  updatedAt             DateTime      @updatedAt
-
-  contacts          Contact[]              @relation("CustomerContacts")
-  orders            Order[]
-  deliveryNotesDocs DeliveryNote[]
-  invoices          Invoice[]
-  creditNotes       CreditNote[]
-  payments          Payment[]              @relation("CustomerPayments")
-  customerPrices    CustomerProductPrice[]
-  portalUser        User?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  contacts              Contact[]              @relation("CustomerContacts")
+  creditNotes           CreditNote[]
+  customerPrices        CustomerProductPrice[]
+  deliveryNotesDocs     DeliveryNote[]
+  invoices              Invoice[]
+  orders                Order[]
+  payments              Payment[]              @relation("CustomerPayments")
+  portalUser            User?
 
   @@index([type])
   @@index([city])
   @@index([isActive])
 }
 
-// ============================================================
-// FORNITORI
-// ============================================================
-
 model Supplier {
-  id               String        @id @default(cuid())
-  code             String        @unique
-  companyName      String
-  vatNumber        String?
-  fiscalCode       String?
-  address          String?
-  city             String?
-  province         String?
-  postalCode       String?
-  country          String        @default("IT")
-  phone            String?
-  email            String?
-  paymentMethod    PaymentMethod @default(BONIFICO)
-  paymentTermsDays Int           @default(30)
-  isActive         Boolean       @default(true)
-  notes            String?
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-
+  id                String             @id @default(cuid())
+  code              String             @unique
+  companyName       String
+  vatNumber         String?
+  fiscalCode        String?
+  address           String?
+  city              String?
+  province          String?
+  postalCode        String?
+  country           String             @default("IT")
+  phone             String?
+  email             String?
+  paymentMethod     PaymentMethod      @default(BONIFICO)
+  paymentTermsDays  Int                @default(30)
+  isActive          Boolean            @default(true)
+  notes             String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
   contacts          Contact[]          @relation("SupplierContacts")
-  supplierProducts  SupplierProduct[]
-  purchaseOrders    PurchaseOrder[]
-  supplierInvoices  SupplierInvoice[]
-  payments          Payment[]          @relation("SupplierPayments")
-  shoppingListItems ShoppingListItem[]
   invoiceItems      InvoiceItem[]
+  payments          Payment[]          @relation("SupplierPayments")
+  purchaseOrders    PurchaseOrder[]
+  shoppingListItems ShoppingListItem[]
+  supplierInvoices  SupplierInvoice[]
+  supplierProducts  SupplierProduct[]
 }
 
 model SupplierProduct {
-  id          String   @id @default(cuid())
-  supplierId  String
-  productId   String
-  price       Decimal  @db.Decimal(10, 2)
-  isPreferred Boolean  @default(false)
+  id           String   @id @default(cuid())
+  supplierId   String
+  productId    String
+  price        Decimal  @db.Decimal(10, 2)
+  isPreferred  Boolean  @default(false)
   leadTimeDays Int?
-  minOrderQty Decimal? @db.Decimal(10, 3)
-  notes       String?
-  updatedAt   DateTime @updatedAt
-
-  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  minOrderQty  Decimal? @db.Decimal(10, 3)
+  notes        String?
+  updatedAt    DateTime @updatedAt
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  supplier     Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
 
   @@unique([supplierId, productId])
 }
 
-// ============================================================
-// CONTATTI
-// ============================================================
-
 model Contact {
-  id         String  @id @default(cuid())
+  id         String    @id @default(cuid())
   firstName  String
   lastName   String
   role       String?
   phone      String?
   mobile     String?
   email      String?
-  isPrimary  Boolean @default(false)
+  isPrimary  Boolean   @default(false)
   customerId String?
   supplierId String?
-
-  customer Customer? @relation("CustomerContacts", fields: [customerId], references: [id], onDelete: Cascade)
-  supplier Supplier? @relation("SupplierContacts", fields: [supplierId], references: [id], onDelete: Cascade)
+  customer   Customer? @relation("CustomerContacts", fields: [customerId], references: [id], onDelete: Cascade)
+  supplier   Supplier? @relation("SupplierContacts", fields: [supplierId], references: [id], onDelete: Cascade)
 
   @@index([customerId])
   @@index([supplierId])
 }
 
-// ============================================================
-// ORDINI
-// ============================================================
-
-enum OrderStatus {
-  RECEIVED
-  CONFIRMED
-  IN_PREPARATION
-  DELIVERED
-  INVOICED
-  CANCELLED
-}
-
-enum OrderChannel {
-  WHATSAPP
-  EMAIL
-  AUDIO
-  MANUAL
-  WEB
-}
-
 model Order {
-  id                   String       @id @default(cuid())
-  orderNumber          String       @unique
-  customerId           String
-  status               OrderStatus  @default(RECEIVED)
-  channel              OrderChannel @default(MANUAL)
-  orderDate            DateTime     @default(now())
+  id                    String              @id @default(cuid())
+  orderNumber           String              @unique
+  customerId            String
+  status                OrderStatus         @default(RECEIVED)
+  channel               OrderChannel        @default(MANUAL)
+  orderDate             DateTime            @default(now())
   requestedDeliveryDate DateTime?
-  notes                String?
-  internalNotes        String?
-  subtotal             Decimal      @db.Decimal(10, 2) @default(0)
-  vatAmount            Decimal      @db.Decimal(10, 2) @default(0)
-  total                Decimal      @db.Decimal(10, 2) @default(0)
-  createdById          String?
-  whatsappMessageId    String?
-  audioTranscriptionId String?
-  sourceEmailId        String?
-  createdAt            DateTime     @default(now())
-  updatedAt            DateTime     @updatedAt
-
-  customer           Customer            @relation(fields: [customerId], references: [id])
-  createdBy          User?               @relation(fields: [createdById], references: [id])
-  items              OrderItem[]
-  deliveryNote       DeliveryNote?
-  whatsappMessage    WhatsAppMessage?    @relation(fields: [whatsappMessageId], references: [id])
-  audioTranscription AudioTranscription? @relation(fields: [audioTranscriptionId], references: [id])
+  notes                 String?
+  internalNotes         String?
+  subtotal              Decimal             @default(0) @db.Decimal(10, 2)
+  vatAmount             Decimal             @default(0) @db.Decimal(10, 2)
+  total                 Decimal             @default(0) @db.Decimal(10, 2)
+  createdById           String?
+  whatsappMessageId     String?
+  audioTranscriptionId  String?
+  sourceEmailId         String?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  deliveryNote          DeliveryNote?
+  audioTranscription    AudioTranscription? @relation(fields: [audioTranscriptionId], references: [id])
+  createdBy             User?               @relation(fields: [createdById], references: [id])
+  customer              Customer            @relation(fields: [customerId], references: [id])
+  whatsappMessage       WhatsAppMessage?    @relation(fields: [whatsappMessageId], references: [id])
+  items                 OrderItem[]
 
   @@index([customerId])
   @@index([status])
@@ -379,58 +266,46 @@ model Order {
 }
 
 model OrderItem {
-  id        String      @id @default(cuid())
-  orderId   String
-  productId String?
+  id          String      @id @default(cuid())
+  orderId     String
+  productId   String?
+  quantity    Decimal     @db.Decimal(10, 3)
+  unit        ProductUnit
+  unitPrice   Decimal     @db.Decimal(10, 2)
+  vatRate     Decimal     @default(4) @db.Decimal(4, 2)
+  lineTotal   Decimal     @db.Decimal(10, 2)
+  notes       String?
+  sortOrder   Int         @default(0)
   productName String?
-  quantity  Decimal     @db.Decimal(10, 3)
-  unit      ProductUnit
-  unitPrice Decimal     @db.Decimal(10, 2)
-  vatRate   Decimal     @db.Decimal(4, 2) @default(4)
-  lineTotal Decimal     @db.Decimal(10, 2)
-  notes     String?
-  sortOrder Int         @default(0)
-
-  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product Product? @relation(fields: [productId], references: [id])
+  order       Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product     Product?    @relation(fields: [productId], references: [id])
 
   @@index([orderId])
 }
 
-// ============================================================
-// BOLLE DI CONSEGNA (DDT)
-// ============================================================
-
-enum DDTStatus {
-  DRAFT
-  ISSUED
-  DELIVERED
-}
-
 model DeliveryNote {
-  id               String    @id @default(cuid())
-  ddtNumber        String    @unique
-  orderId          String?   @unique
+  id               String             @id @default(cuid())
+  ddtNumber        String             @unique
+  orderId          String?            @unique
   customerId       String
-  status           DDTStatus @default(DRAFT)
-  issueDate        DateTime  @default(now())
+  status           DDTStatus          @default(DRAFT)
+  issueDate        DateTime           @default(now())
   deliveryDate     DateTime?
-  transportReason  String    @default("Vendita")
-  transportedBy    String    @default("Mittente")
+  transportReason  String             @default("Vendita")
+  transportedBy    String             @default("Mittente")
   goodsAppearance  String?
   numberOfPackages Int?
-  weight           Decimal?  @db.Decimal(10, 2)
+  weight           Decimal?           @db.Decimal(10, 2)
   signatureImage   String?
   deliveryNotes    String?
   createdById      String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-
-  order        Order?             @relation(fields: [orderId], references: [id])
-  customer     Customer           @relation(fields: [customerId], references: [id])
-  createdBy    User?              @relation(fields: [createdById], references: [id])
-  items        DeliveryNoteItem[]
-  invoiceLinks InvoiceDDTLink[]
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  createdBy        User?              @relation(fields: [createdById], references: [id])
+  customer         Customer           @relation(fields: [customerId], references: [id])
+  order            Order?             @relation(fields: [orderId], references: [id])
+  items            DeliveryNoteItem[]
+  invoiceLinks     InvoiceDDTLink[]
 
   @@index([customerId])
   @@index([status])
@@ -438,63 +313,48 @@ model DeliveryNote {
 }
 
 model DeliveryNoteItem {
-  id             String      @id @default(cuid())
+  id             String       @id @default(cuid())
   deliveryNoteId String
   productId      String?
-  productName    String?
-  quantity       Decimal     @db.Decimal(10, 3)
+  quantity       Decimal      @db.Decimal(10, 3)
   unit           ProductUnit
-  unitPrice      Decimal     @db.Decimal(10, 2)
-  vatRate        Decimal     @db.Decimal(4, 2) @default(4)
-  lineTotal      Decimal     @db.Decimal(10, 2)
+  unitPrice      Decimal      @db.Decimal(10, 2)
+  vatRate        Decimal      @default(4) @db.Decimal(4, 2)
+  lineTotal      Decimal      @db.Decimal(10, 2)
   notes          String?
-  sortOrder      Int         @default(0)
-
-  deliveryNote DeliveryNote @relation(fields: [deliveryNoteId], references: [id], onDelete: Cascade)
-  product      Product?     @relation(fields: [productId], references: [id])
+  sortOrder      Int          @default(0)
+  productName    String?
+  deliveryNote   DeliveryNote @relation(fields: [deliveryNoteId], references: [id], onDelete: Cascade)
+  product        Product?     @relation(fields: [productId], references: [id])
 
   @@index([deliveryNoteId])
 }
 
-// ============================================================
-// FATTURAZIONE
-// ============================================================
-
-enum InvoiceStatus {
-  DRAFT
-  ISSUED
-  SENT
-  PAID
-  OVERDUE
-  CANCELLED
-}
-
 model Invoice {
-  id            String        @id @default(cuid())
-  invoiceNumber String        @unique
+  id            String           @id @default(cuid())
+  invoiceNumber String           @unique
   customerId    String
-  status        InvoiceStatus @default(DRAFT)
-  issueDate     DateTime      @default(now())
+  status        InvoiceStatus    @default(DRAFT)
+  issueDate     DateTime         @default(now())
   dueDate       DateTime
-  subtotal      Decimal       @db.Decimal(10, 2)
-  vatAmount     Decimal       @db.Decimal(10, 2)
-  total         Decimal       @db.Decimal(10, 2)
-  paidAmount    Decimal       @db.Decimal(10, 2) @default(0)
+  subtotal      Decimal          @db.Decimal(10, 2)
+  vatAmount     Decimal          @db.Decimal(10, 2)
+  total         Decimal          @db.Decimal(10, 2)
+  paidAmount    Decimal          @default(0) @db.Decimal(10, 2)
   paymentMethod PaymentMethod?
   paymentTerms  String?
   notes         String?
   internalNotes String?
   pdfUrl        String?
   createdById   String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-
-  customer    Customer         @relation(fields: [customerId], references: [id])
-  createdBy   User?            @relation(fields: [createdById], references: [id])
-  items       InvoiceItem[]
-  ddtLinks    InvoiceDDTLink[]
-  payments    Payment[]        @relation("InvoicePayments")
-  creditNotes CreditNote[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  creditNotes   CreditNote[]
+  createdBy     User?            @relation(fields: [createdById], references: [id])
+  customer      Customer         @relation(fields: [customerId], references: [id])
+  ddtLinks      InvoiceDDTLink[]
+  items         InvoiceItem[]
+  payments      Payment[]        @relation("InvoicePayments")
 
   @@index([customerId])
   @@index([status])
@@ -503,12 +363,11 @@ model Invoice {
 }
 
 model InvoiceDDTLink {
-  id             String @id @default(cuid())
+  id             String       @id @default(cuid())
   invoiceId      String
   deliveryNoteId String
-
-  invoice      Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  deliveryNote DeliveryNote @relation(fields: [deliveryNoteId], references: [id])
+  deliveryNote   DeliveryNote @relation(fields: [deliveryNoteId], references: [id])
+  invoice        Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
   @@unique([invoiceId, deliveryNoteId])
 }
@@ -522,14 +381,13 @@ model InvoiceItem {
   unit        ProductUnit
   unitPrice   Decimal     @db.Decimal(10, 2)
   costPrice   Decimal?    @db.Decimal(10, 2)
-  vatRate     Decimal     @db.Decimal(4, 2) @default(4)
+  vatRate     Decimal     @default(4) @db.Decimal(4, 2)
   lineTotal   Decimal     @db.Decimal(10, 2)
   sortOrder   Int         @default(0)
   supplierId  String?
-
-  invoice  Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  product  Product?  @relation(fields: [productId], references: [id])
-  supplier Supplier? @relation(fields: [supplierId], references: [id])
+  invoice     Invoice     @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product     Product?    @relation(fields: [productId], references: [id])
+  supplier    Supplier?   @relation(fields: [supplierId], references: [id])
 
   @@index([invoiceId])
 }
@@ -546,24 +404,8 @@ model CreditNote {
   reason           String
   pdfUrl           String?
   createdAt        DateTime @default(now())
-
-  invoice  Invoice  @relation(fields: [invoiceId], references: [id])
-  customer Customer @relation(fields: [customerId], references: [id])
-}
-
-// ============================================================
-// PAGAMENTI
-// ============================================================
-
-enum PaymentDirection {
-  INCOMING
-  OUTGOING
-}
-
-enum PaymentStatus {
-  PENDING
-  COMPLETED
-  CANCELLED
+  customer         Customer @relation(fields: [customerId], references: [id])
+  invoice          Invoice  @relation(fields: [invoiceId], references: [id])
 }
 
 model Payment {
@@ -581,11 +423,10 @@ model Payment {
   supplierInvoiceId String?
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
-
-  customer        Customer?        @relation("CustomerPayments", fields: [customerId], references: [id])
-  supplier        Supplier?        @relation("SupplierPayments", fields: [supplierId], references: [id])
-  invoice         Invoice?         @relation("InvoicePayments", fields: [invoiceId], references: [id])
-  supplierInvoice SupplierInvoice? @relation(fields: [supplierInvoiceId], references: [id])
+  customer          Customer?        @relation("CustomerPayments", fields: [customerId], references: [id])
+  invoice           Invoice?         @relation("InvoicePayments", fields: [invoiceId], references: [id])
+  supplier          Supplier?        @relation("SupplierPayments", fields: [supplierId], references: [id])
+  supplierInvoice   SupplierInvoice? @relation(fields: [supplierInvoiceId], references: [id])
 
   @@index([customerId])
   @@index([supplierId])
@@ -593,31 +434,19 @@ model Payment {
   @@index([paymentDate])
 }
 
-// ============================================================
-// ACQUISTI DA FORNITORI
-// ============================================================
-
-enum PurchaseOrderStatus {
-  DRAFT
-  SENT
-  RECEIVED
-  CANCELLED
-}
-
 model PurchaseOrder {
-  id           String              @id @default(cuid())
-  poNumber     String              @unique
-  supplierId   String
-  status       PurchaseOrderStatus @default(DRAFT)
-  orderDate    DateTime            @default(now())
-  expectedDate DateTime?
-  subtotal     Decimal             @db.Decimal(10, 2) @default(0)
-  vatAmount    Decimal             @db.Decimal(10, 2) @default(0)
-  total        Decimal             @db.Decimal(10, 2) @default(0)
-  notes        String?
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
-
+  id              String              @id @default(cuid())
+  poNumber        String              @unique
+  supplierId      String
+  status          PurchaseOrderStatus @default(DRAFT)
+  orderDate       DateTime            @default(now())
+  expectedDate    DateTime?
+  subtotal        Decimal             @default(0) @db.Decimal(10, 2)
+  vatAmount       Decimal             @default(0) @db.Decimal(10, 2)
+  total           Decimal             @default(0) @db.Decimal(10, 2)
+  notes           String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
   supplier        Supplier            @relation(fields: [supplierId], references: [id])
   items           PurchaseOrderItem[]
   supplierInvoice SupplierInvoice?
@@ -627,43 +456,41 @@ model PurchaseOrder {
 }
 
 model PurchaseOrderItem {
-  id              String      @id @default(cuid())
+  id              String        @id @default(cuid())
   purchaseOrderId String
-  productId       String
-  quantity        Decimal     @db.Decimal(10, 3)
+  productId       String?
+  quantity        Decimal       @db.Decimal(10, 3)
   unit            ProductUnit
-  unitPrice       Decimal     @db.Decimal(10, 2)
-  lineTotal       Decimal     @db.Decimal(10, 2)
-
-  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
-  product       Product       @relation(fields: [productId], references: [id])
+  unitPrice       Decimal       @db.Decimal(10, 2)
+  lineTotal       Decimal       @db.Decimal(10, 2)
+  productName     String?
+  product         Product?      @relation(fields: [productId], references: [id])
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
 
   @@index([purchaseOrderId])
   @@index([productId])
 }
 
 model SupplierInvoice {
-  id                    String   @id @default(cuid())
+  id                    String                @id @default(cuid())
   supplierInvoiceNumber String
   supplierId            String
   issueDate             DateTime
   dueDate               DateTime
-  subtotal              Decimal  @db.Decimal(10, 2)
-  vatAmount             Decimal  @db.Decimal(10, 2)
-  total                 Decimal  @db.Decimal(10, 2)
-  paidAmount            Decimal  @db.Decimal(10, 2) @default(0)
-  isPaid                Boolean  @default(false)
+  subtotal              Decimal               @db.Decimal(10, 2)
+  vatAmount             Decimal               @db.Decimal(10, 2)
+  total                 Decimal               @db.Decimal(10, 2)
+  paidAmount            Decimal               @default(0) @db.Decimal(10, 2)
+  isPaid                Boolean               @default(false)
   pdfUrl                String?
   notes                 String?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-
-  purchaseOrderId String?  @unique
-
-  supplier        Supplier              @relation(fields: [supplierId], references: [id])
-  purchaseOrder   PurchaseOrder?        @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
-  items           SupplierInvoiceItem[]
-  payments        Payment[]
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  purchaseOrderId       String?               @unique
+  payments              Payment[]
+  purchaseOrder         PurchaseOrder?        @relation(fields: [purchaseOrderId], references: [id])
+  supplier              Supplier              @relation(fields: [supplierId], references: [id])
+  items                 SupplierInvoiceItem[]
 
   @@index([supplierId])
   @@index([dueDate])
@@ -671,88 +498,68 @@ model SupplierInvoice {
 }
 
 model SupplierInvoiceItem {
-  id                String  @id @default(cuid())
+  id                String          @id @default(cuid())
   supplierInvoiceId String
   productId         String?
   description       String
-  quantity          Decimal @db.Decimal(10, 3)
+  quantity          Decimal         @db.Decimal(10, 3)
   unit              ProductUnit
-  unitPrice         Decimal @db.Decimal(10, 2)
-  vatRate           Decimal @db.Decimal(5, 2) @default(4)
-  lineTotal         Decimal @db.Decimal(10, 2)
-  sortOrder         Int     @default(0)
-
-  supplierInvoice   SupplierInvoice @relation(fields: [supplierInvoiceId], references: [id], onDelete: Cascade)
+  unitPrice         Decimal         @db.Decimal(10, 2)
+  vatRate           Decimal         @default(4) @db.Decimal(5, 2)
+  lineTotal         Decimal         @db.Decimal(10, 2)
+  sortOrder         Int             @default(0)
   product           Product?        @relation(fields: [productId], references: [id])
+  supplierInvoice   SupplierInvoice @relation(fields: [supplierInvoiceId], references: [id], onDelete: Cascade)
 
   @@index([supplierInvoiceId])
 }
 
-// ============================================================
-// LISTA DELLA SPESA
-// ============================================================
-
-enum ShoppingListStatus {
-  DRAFT
-  FINALIZED
-  ORDERED
-  RECEIVED
-}
-
 model ShoppingList {
   id        String             @id @default(cuid())
-  date      DateTime           @db.Date
+  date      DateTime           @unique @db.Date
   status    ShoppingListStatus @default(DRAFT)
   notes     String?
   createdAt DateTime           @default(now())
   updatedAt DateTime           @updatedAt
-
-  items ShoppingListItem[]
-
-  @@unique([date])
+  items     ShoppingListItem[]
 }
 
 model ShoppingListItem {
-  id             String      @id @default(cuid())
+  id             String       @id @default(cuid())
   shoppingListId String
-  productId      String
-  totalQuantity  Decimal     @db.Decimal(10, 3)
-  availableStock Decimal     @default(0) @db.Decimal(10, 3)
-  netQuantity    Decimal     @default(0) @db.Decimal(10, 3)
+  productId      String?
+  totalQuantity  Decimal      @db.Decimal(10, 3)
+  availableStock Decimal      @default(0) @db.Decimal(10, 3)
+  netQuantity    Decimal      @default(0) @db.Decimal(10, 3)
   unit           ProductUnit
   supplierId     String?
-  supplierPrice  Decimal?    @db.Decimal(10, 2)
-  isOrdered      Boolean     @default(false)
-  isReceived     Boolean     @default(false)
-  receivedQty    Decimal?    @db.Decimal(10, 3)
+  supplierPrice  Decimal?     @db.Decimal(10, 2)
+  isOrdered      Boolean      @default(false)
+  isReceived     Boolean      @default(false)
+  receivedQty    Decimal?     @db.Decimal(10, 3)
   notes          String?
+  productName    String?
+  product        Product?     @relation(fields: [productId], references: [id])
+  shoppingList   ShoppingList @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+  supplier       Supplier?    @relation(fields: [supplierId], references: [id])
 
-  shoppingList ShoppingList @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
-  product      Product      @relation(fields: [productId], references: [id])
-  supplier     Supplier?    @relation(fields: [supplierId], references: [id])
-
-  @@unique([shoppingListId, productId])
+  @@unique([shoppingListId, productId, productName])
   @@index([shoppingListId])
 }
-
-// ============================================================
-// INTEGRAZIONI
-// ============================================================
 
 model WhatsAppMessage {
   id           String   @id @default(cuid())
   messageId    String   @unique
   from         String
   customerName String?
-  body         String   @db.Text
+  body         String
   mediaUrl     String?
   timestamp    DateTime
   isProcessed  Boolean  @default(false)
   parsedData   Json?
   errorMessage String?
   createdAt    DateTime @default(now())
-
-  orders Order[]
+  orders       Order[]
 }
 
 model AudioTranscription {
@@ -761,14 +568,13 @@ model AudioTranscription {
   fileUrl       String
   fileSize      Int
   duration      Int?
-  transcription String?  @db.Text
+  transcription String?
   parsedData    Json?
   status        String   @default("pending")
   errorMessage  String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-
-  orders Order[]
+  orders        Order[]
 }
 
 model IncomingEmail {
@@ -776,8 +582,8 @@ model IncomingEmail {
   messageId    String   @unique
   from         String
   subject      String
-  body         String   @db.Text
-  htmlBody     String?  @db.Text
+  body         String
+  htmlBody     String?
   receivedAt   DateTime
   isProcessed  Boolean  @default(false)
   parsedData   Json?
@@ -785,42 +591,25 @@ model IncomingEmail {
   createdAt    DateTime @default(now())
 }
 
-// ============================================================
-// MAGAZZINO
-// ============================================================
-
-enum StockMovementType {
-  CARICO           // Carico da fornitore
-  SCARICO          // Scarico per consegna (DDT)
-  RETTIFICA_POS    // Rettifica positiva (inventario)
-  RETTIFICA_NEG    // Rettifica negativa (inventario)
-  SCARTO           // Merce scartata/deteriorata
-}
-
 model StockMovement {
-  id              String            @id @default(cuid())
-  productId       String
-  type            StockMovementType
-  quantity        Decimal           @db.Decimal(10, 3)
-  unit            ProductUnit       @default(KG)
-  reason          String?
-  referenceType   String?           // "PURCHASE_ORDER", "DELIVERY_NOTE", "MANUAL"
-  referenceId     String?           // ID del documento collegato
-  createdById     String?
-  createdAt       DateTime          @default(now())
-
-  product   Product @relation(fields: [productId], references: [id])
-  createdBy User?   @relation("StockMovements", fields: [createdById], references: [id], onDelete: SetNull)
+  id            String            @id @default(cuid())
+  productId     String
+  type          StockMovementType
+  quantity      Decimal           @db.Decimal(10, 3)
+  unit          ProductUnit       @default(KG)
+  reason        String?
+  referenceType String?
+  referenceId   String?
+  createdById   String?
+  createdAt     DateTime          @default(now())
+  createdBy     User?             @relation("StockMovements", fields: [createdById], references: [id])
+  product       Product           @relation(fields: [productId], references: [id])
 
   @@index([productId])
   @@index([type])
   @@index([createdAt])
   @@index([referenceType, referenceId])
 }
-
-// ============================================================
-// SISTEMA
-// ============================================================
 
 model ActivityLog {
   id        String   @id @default(cuid())
@@ -831,8 +620,7 @@ model ActivityLog {
   details   Json?
   ipAddress String?
   createdAt DateTime @default(now())
-
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user      User?    @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([action])
@@ -877,4 +665,121 @@ model NumberSequence {
   prefix     String?
 
   @@unique([type, year])
+}
+
+enum Role {
+  ADMIN
+  OPERATOR
+  VIEWER
+  CUSTOMER
+}
+
+enum Theme {
+  LIGHT
+  DARK
+  SYSTEM
+}
+
+enum ProductUnit {
+  KG
+  G
+  PEZZI
+  CASSETTA
+  MAZZO
+  GRAPPOLO
+  VASETTO
+  SACCHETTO
+}
+
+enum ProductCategoryType {
+  FRUTTA
+  VERDURA
+  ORTAGGI
+  ERBE_AROMATICHE
+  SPEZIE
+  FRUTTA_ESOTICA
+  FRUTTA_SECCA
+}
+
+enum CustomerType {
+  RISTORANTE
+  SUPERMERCATO
+  BAR
+  HOTEL
+  MENSA
+  GASTRONOMIA
+  ALTRO
+}
+
+enum PaymentMethod {
+  CONTANTI
+  BONIFICO
+  ASSEGNO
+  RIBA
+  CARTA
+}
+
+enum OrderStatus {
+  RECEIVED
+  CONFIRMED
+  IN_PREPARATION
+  DELIVERED
+  INVOICED
+  CANCELLED
+}
+
+enum OrderChannel {
+  WHATSAPP
+  EMAIL
+  AUDIO
+  MANUAL
+  WEB
+}
+
+enum DDTStatus {
+  DRAFT
+  ISSUED
+  DELIVERED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  SENT
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum PaymentDirection {
+  INCOMING
+  OUTGOING
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  SENT
+  RECEIVED
+  CANCELLED
+}
+
+enum ShoppingListStatus {
+  DRAFT
+  FINALIZED
+  ORDERED
+  RECEIVED
+}
+
+enum StockMovementType {
+  CARICO
+  SCARICO
+  RETTIFICA_POS
+  RETTIFICA_NEG
+  SCARTO
 }
