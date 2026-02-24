@@ -113,7 +113,7 @@ async function main() {
           description: "Generato automaticamente da immagine",
           image: imagePath,
           categoryId: defaultCategory.id,
-          unit: "PZ", // Default
+          unit: "PEZZI", // Default
           vatRate: 4,
           isAvailable: true,
           // Prezzi a 0 o null come da schema
