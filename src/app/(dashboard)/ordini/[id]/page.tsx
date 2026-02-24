@@ -85,7 +85,8 @@ interface OrderData {
     unitPrice: number
     lineTotal: number
     notes: string | null
-    product: { id: string; name: string; category: { name: string } | null }
+    productName: string | null
+    product: { id: string; name: string; category: { name: string } | null } | null
   }[]
   createdBy: { id: string; name: string | null; email: string } | null
   whatsappMessage: { id: string; fromPhone: string; messageBody: string; receivedAt: string } | null
@@ -285,10 +286,13 @@ export default function OrdineDetailPage({ params }: { params: Promise<{ id: str
                       {order.items.map((item) => (
                         <tr key={item.id} className="border-b border-border/30 last:border-0">
                           <td className="px-4 py-3">
-                            <span className="text-sm font-medium">{item.product?.name || "—"}</span>
-                            {item.product?.category && (
-                              <p className="text-xs text-muted-foreground">{item.product.category.name}</p>
-                            )}
+                            <div>
+                              <span className="text-sm font-medium">{item.product?.name ?? item.productName ?? "Prodotto personalizzato"}</span>
+                              {item.product?.category && (
+                                <p className="text-xs text-muted-foreground">{item.product.category.name}</p>
+                              )}
+                              {item.notes && <p className="text-xs text-muted-foreground italic mt-0.5">{item.notes}</p>}
+                            </div>
                           </td>
                           <td className="px-4 py-3 text-center">
                             <span className="text-sm">{item.quantity} {PRODUCT_UNIT_LABELS[item.unit] || item.unit}</span>

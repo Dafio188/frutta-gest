@@ -30,7 +30,7 @@ interface CustomerOption { id: string; companyName: string }
 interface DDTOption {
   id: string; ddtNumber: string; status: string; issueDate: string
   customer: { companyName: string }
-  items: { id: string; quantity: number; unit: string; unitPrice: number; lineTotal: number; vatRate: number; product: { name: string } }[]
+  items: { id: string; quantity: number; unit: string; unitPrice: number; lineTotal: number; vatRate: number; productName: string | null; product: { name: string } | null }[]
 }
 
 export default function NuovaFatturaPage() {
@@ -241,7 +241,7 @@ export default function NuovaFatturaPage() {
                         <tbody>
                           {allItems.map((item, i) => (
                             <tr key={i} className="border-b border-border/50">
-                              <td className="py-2">{item.product?.name || "—"}</td>
+                              <td className="py-2">{item.product?.name ?? item.productName ?? "Prodotto personalizzato"}</td>
                               <td className="text-right py-2">{item.quantity} {(PRODUCT_UNIT_LABELS[item.unit] || item.unit).toLowerCase()}</td>
                               <td className="text-right py-2">{formatCurrency(item.unitPrice)}</td>
                               <td className="text-right py-2">{item.vatRate}%</td>

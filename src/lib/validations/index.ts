@@ -109,12 +109,16 @@ export const supplierSchema = z.object({
 // ============================================================
 
 export const orderItemSchema = z.object({
-  productId: z.string().min(1, "Seleziona un prodotto"),
+  productId: z.string().optional().nullable(),
+  productName: z.string().optional().nullable(),
   quantity: z.coerce.number().min(0.001, "La quantità deve essere maggiore di 0"),
   unit: z.enum(["KG", "G", "PEZZI", "CASSETTA", "MAZZO", "GRAPPOLO", "VASETTO", "SACCHETTO"]),
   unitPrice: z.coerce.number().min(0, "Il prezzo non può essere negativo"),
   vatRate: z.coerce.number().default(4),
   notes: z.string().optional().nullable(),
+}).refine((data) => data.productId || data.productName, {
+  message: "Seleziona un prodotto o inserisci un nome",
+  path: ["productId"],
 })
 
 export const orderSchema = z.object({

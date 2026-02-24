@@ -9,7 +9,7 @@
 "use client"
 
 import * as React from "react"
-import { Search, Check, ChevronsUpDown, X } from "lucide-react"
+import { Search, Check, ChevronsUpDown, X, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export interface ComboboxOption {
@@ -31,6 +31,7 @@ interface ComboboxProps {
   disabled?: boolean
   loading?: boolean
   onSearchChange?: (query: string) => void
+  allowCustom?: boolean
   className?: string
 }
 
@@ -46,6 +47,7 @@ export function Combobox({
   disabled = false,
   loading = false,
   onSearchChange,
+  allowCustom = false,
   className,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
@@ -53,7 +55,7 @@ export function Combobox({
   const containerRef = React.useRef<HTMLDivElement>(null)
   const inputRef = React.useRef<HTMLInputElement>(null)
 
-  const selectedOption = options.find((o) => o.value === value)
+  const selectedOption = options.find((o) => o.value === value) || (allowCustom && value ? { value, label: value } : undefined)
 
   const filtered = React.useMemo(() => {
     if (!search) return options
@@ -166,38 +168,54 @@ export function Combobox({
               <div className="py-6 text-center text-sm text-muted-foreground">
                 Caricamento...
               </div>
-            ) : filtered.length === 0 ? (
+            ) : filtered.length === 0 && (!allowCustom || !search) ? (
               <div className="py-6 text-center text-sm text-muted-foreground">
                 {emptyMessage}
               </div>
             ) : (
-              filtered.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => handleSelect(option)}
-                  className={cn(
-                    "w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-left text-sm",
-                    "transition-colors duration-100",
-                    "hover:bg-muted/70",
-                    value === option.value && "bg-primary/10 text-primary"
-                  )}
-                >
-                  <Check
+              <>
+                {filtered.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => handleSelect(option)}
                     className={cn(
-                      "h-3.5 w-3.5 shrink-0",
-                      value === option.value ? "opacity-100" : "opacity-0"
+                      "w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-left text-sm",
+                      "transition-colors duration-100",
+                      "hover:bg-muted/70",
+                      value === option.value && "bg-primary/10 text-primary"
                     )}
-                    strokeWidth={2}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate font-medium">{option.label}</p>
-                    {option.subtitle && (
-                      <p className="text-xs text-muted-foreground truncate">{option.subtitle}</p>
-                    )}
-                  </div>
-                </button>
-              ))
+                  >
+                    <Check
+                      className={cn(
+                        "h-3.5 w-3.5 shrink-0",
+                        value === option.value ? "opacity-100" : "opacity-0"
+                      )}
+                      strokeWidth={2}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate font-medium">{option.label}</p>
+                      {option.subtitle && (
+                        <p className="text-xs text-muted-foreground truncate">{option.subtitle}</p>
+                      )}
+                    </div>
+                  </button>
+                ))}
+                {allowCustom && search && !filtered.some(o => o.label.toLowerCase() === search.toLowerCase()) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onValueChange(search, { value: search, label: search, subtitle: "Prodotto personalizzato" })
+                      setSearch("")
+                      setOpen(false)
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-left text-sm text-primary hover:bg-muted/70 transition-colors duration-100"
+                  >
+                    <Plus className="h-3.5 w-3.5 shrink-0" />
+                    <span className="font-medium">Usa &quot;{search}&quot;</span>
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>

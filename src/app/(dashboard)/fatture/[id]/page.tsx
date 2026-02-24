@@ -60,6 +60,7 @@ interface InvoiceData {
     id: string; description: string; quantity: number; unit: string
     unitPrice: number; costPrice: number | null; vatRate: number; lineTotal: number
     supplierId: string | null
+    productId: string | null
     product: { id: string; name: string; category: { name: string } | null } | null
     supplier: { id: string; companyName: string } | null
   }[]

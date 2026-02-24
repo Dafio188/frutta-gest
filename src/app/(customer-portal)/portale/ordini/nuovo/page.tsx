@@ -19,12 +19,14 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 
 interface CartItem {
-  productId: string
+  tempId: string
+  productId?: string
   name: string
   unit: string
   unitPrice: number
   vatRate: number
   quantity: number
+  isCustom?: boolean
 }
 
 const fadeUp = {
@@ -55,35 +57,55 @@ export default function NewPortalOrderPage() {
   }, [search])
 
   const addToCart = (product: any) => {
-    const existing = cart.find((c) => c.productId === product.id)
-    if (existing) {
-      setCart(cart.map((c) =>
-        c.productId === product.id ? { ...c, quantity: c.quantity + 1 } : c
-      ))
-    } else {
-      setCart([...cart, {
+    setCart((prev) => {
+      const existing = prev.find((c) => c.productId === product.id)
+      if (existing) {
+        return prev.map((c) =>
+          c.productId === product.id ? { ...c, quantity: c.quantity + 1 } : c
+        )
+      }
+      return [...prev, {
+        tempId: product.id,
         productId: product.id,
         name: product.name,
         unit: product.unit,
         unitPrice: Number(product.customerPrice),
         vatRate: Number(product.vatRate),
         quantity: 1,
-      }])
-    }
+      }]
+    })
   }
 
-  const updateQuantity = (productId: string, qty: number) => {
+  const addCustomToCart = () => {
+    if (!search.trim()) return
+    
+    // Genera ID temporaneo
+    const tempId = `custom-${Date.now()}`
+    
+    setCart([...cart, {
+      tempId,
+      name: search,
+      unit: "KG", // Default
+      unitPrice: 0, // Prezzo da definire
+      vatRate: 4, // Default IVA
+      quantity: 1,
+      isCustom: true
+    }])
+    setSearch("") // Pulisce ricerca
+  }
+
+  const updateQuantity = (tempId: string, qty: number) => {
     if (qty <= 0) {
-      setCart(cart.filter((c) => c.productId !== productId))
+      setCart(cart.filter((c) => c.tempId !== tempId))
     } else {
       setCart(cart.map((c) =>
-        c.productId === productId ? { ...c, quantity: qty } : c
+        c.tempId === tempId ? { ...c, quantity: qty } : c
       ))
     }
   }
 
-  const removeFromCart = (productId: string) => {
-    setCart(cart.filter((c) => c.productId !== productId))
+  const removeFromCart = (tempId: string) => {
+    setCart(cart.filter((c) => c.tempId !== tempId))
   }
 
   const subtotal = cart.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
@@ -99,7 +121,12 @@ export default function NewPortalOrderPage() {
     setSubmitting(true)
     try {
       await createPortalOrder({
-        items: cart.map((c) => ({ productId: c.productId, quantity: c.quantity, unit: c.unit })),
+        items: cart.map((c) => ({ 
+          productId: c.productId, 
+          productName: c.name,
+          quantity: c.quantity, 
+          unit: c.unit 
+        })),
         requestedDeliveryDate: deliveryDate || undefined,
         notes: notes || undefined,
       })
@@ -146,6 +173,26 @@ export default function NewPortalOrderPage() {
               </div>
             ) : (
               <div className="max-h-[500px] overflow-y-auto space-y-1.5">
+                {/* Bottone Aggiungi Custom (visibile se c'è una ricerca) */}
+                {search.trim().length > 0 && (
+                  <div 
+                    onClick={addCustomToCart}
+                    className="flex items-center gap-3 p-3 rounded-xl border border-dashed border-emerald-500/50 bg-emerald-500/5 hover:bg-emerald-500/10 cursor-pointer mb-2 transition-colors"
+                  >
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600">
+                      <Plus className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                        Aggiungi "{search}" come prodotto manuale
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Se non trovi il prodotto in lista, aggiungilo qui
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {products.map((product) => {
                   const inCart = cart.find((c) => c.productId === product.id)
                   return (
@@ -201,16 +248,19 @@ export default function NewPortalOrderPage() {
             ) : (
               <div className="space-y-3">
                 {cart.map((item) => (
-                  <div key={item.productId} className="flex items-center justify-between p-2 rounded-xl bg-muted/30">
+                  <div key={item.tempId} className="flex items-center justify-between p-2 rounded-xl bg-muted/30">
                     <div className="flex-1 min-w-0 mr-2">
-                      <p className="text-sm font-medium truncate">{item.name}</p>
+                      <p className="text-sm font-medium truncate">
+                        {item.name}
+                        {item.isCustom && <span className="ml-2 text-xs text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded-full">Manual</span>}
+                      </p>
                       <p className="text-xs text-muted-foreground">
                         {formatCurrency(item.unitPrice)} / {PRODUCT_UNIT_LABELS[item.unit] || item.unit}
                       </p>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <button
-                        onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                        onClick={() => updateQuantity(item.tempId, item.quantity - 1)}
                         className="flex h-7 w-7 items-center justify-center rounded-lg bg-background border border-border/50 hover:bg-muted transition-colors"
                       >
                         <Minus className="h-3 w-3" />
@@ -218,19 +268,19 @@ export default function NewPortalOrderPage() {
                       <input
                         type="number"
                         value={item.quantity}
-                        onChange={(e) => updateQuantity(item.productId, parseFloat(e.target.value) || 0)}
+                        onChange={(e) => updateQuantity(item.tempId, parseFloat(e.target.value) || 0)}
                         className="w-14 h-7 text-center text-sm rounded-lg border border-border/50 bg-background focus:outline-none focus:ring-1 focus:ring-emerald-500"
                         step="0.5"
                         min="0"
                       />
                       <button
-                        onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                        onClick={() => updateQuantity(item.tempId, item.quantity + 1)}
                         className="flex h-7 w-7 items-center justify-center rounded-lg bg-background border border-border/50 hover:bg-muted transition-colors"
                       >
                         <Plus className="h-3 w-3" />
                       </button>
                       <button
-                        onClick={() => removeFromCart(item.productId)}
+                        onClick={() => removeFromCart(item.tempId)}
                         className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-destructive/10 hover:text-destructive transition-colors ml-1"
                       >
                         <Trash2 className="h-3.5 w-3.5" />

@@ -381,7 +381,8 @@ model Order {
 model OrderItem {
   id        String      @id @default(cuid())
   orderId   String
-  productId String
+  productId String?
+  productName String?
   quantity  Decimal     @db.Decimal(10, 3)
   unit      ProductUnit
   unitPrice Decimal     @db.Decimal(10, 2)
@@ -391,7 +392,7 @@ model OrderItem {
   sortOrder Int         @default(0)
 
   order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id])
+  product Product? @relation(fields: [productId], references: [id])
 
   @@index([orderId])
 }
@@ -439,7 +440,8 @@ model DeliveryNote {
 model DeliveryNoteItem {
   id             String      @id @default(cuid())
   deliveryNoteId String
-  productId      String
+  productId      String?
+  productName    String?
   quantity       Decimal     @db.Decimal(10, 3)
   unit           ProductUnit
   unitPrice      Decimal     @db.Decimal(10, 2)
@@ -449,7 +451,7 @@ model DeliveryNoteItem {
   sortOrder      Int         @default(0)
 
   deliveryNote DeliveryNote @relation(fields: [deliveryNoteId], references: [id], onDelete: Cascade)
-  product      Product      @relation(fields: [productId], references: [id])
+  product      Product?     @relation(fields: [productId], references: [id])
 
   @@index([deliveryNoteId])
 }

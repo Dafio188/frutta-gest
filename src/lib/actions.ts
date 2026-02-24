@@ -669,6 +669,7 @@ export async function createOrder(data: unknown) {
 
     return {
       productId: item.productId,
+      productName: item.productName,
       quantity: item.quantity,
       unit: item.unit,
       unitPrice: item.unitPrice,
@@ -739,6 +740,7 @@ export async function updateOrder(id: string, data: unknown) {
 
     return {
       productId: item.productId,
+      productName: item.productName,
       quantity: item.quantity,
       unit: item.unit,
       unitPrice: item.unitPrice,
@@ -810,12 +812,15 @@ export async function updateOrderStatus(id: string, status: string) {
 
   // SCARICO magazzino quando ordine va IN_PREPARATION
   if (status === "IN_PREPARATION" && currentOrder.items.length > 0) {
-    await db.$transaction(
-      currentOrder.items.map((item) =>
-        db.stockMovement.create({
-          data: {
-            productId: item.productId,
-            type: "SCARICO",
+    const itemsToProcess = currentOrder.items.filter((item) => item.productId !== null)
+    
+    if (itemsToProcess.length > 0) {
+      await db.$transaction(
+        itemsToProcess.map((item) =>
+          db.stockMovement.create({
+            data: {
+              productId: item.productId!,
+              type: "SCARICO",
             quantity: item.quantity,
             unit: item.unit,
             reason: `Prelievo per ordine ${order.orderNumber}`,
@@ -827,6 +832,7 @@ export async function updateOrderStatus(id: string, status: string) {
       )
     )
   }
+}
 
   // CARICO compensativo se annullato dopo preparazione (ripristina stock)
   if (status === "CANCELLED" && ["IN_PREPARATION", "DELIVERED"].includes(currentOrder.status)) {
@@ -1018,7 +1024,8 @@ export async function createDeliveryNote(data: unknown) {
 
   // Se c'e' un orderId, copiamo gli items dall'ordine
   let itemsToCreate: {
-    productId: string
+    productId: string | null
+    productName?: string | null
     quantity: number
     unit: any
     unitPrice: number
@@ -1044,6 +1051,7 @@ export async function createDeliveryNote(data: unknown) {
 
     itemsToCreate = order.items.map((item, index) => ({
       productId: item.productId,
+      productName: item.productName,
       quantity: Number(item.quantity),
       unit: item.unit,
       unitPrice: Number(item.unitPrice),
@@ -1200,7 +1208,7 @@ export async function updateDeliveryNoteStatus(id: string, status: string) {
       const costInfo = item.productId ? costLookup.get(item.productId) : undefined
       return {
         productId: item.productId,
-        description: item.product.name,
+        description: item.product?.name ?? item.productName ?? "Prodotto personalizzato",
         quantity: Number(item.quantity),
         unit: item.unit,
         unitPrice: Number(item.unitPrice),
@@ -1294,7 +1302,7 @@ export async function generateInvoiceFromDDT(ddtId: string) {
     const costInfo = item.productId ? costLookup.get(item.productId) : undefined
     return {
       productId: item.productId,
-      description: item.product.name,
+      description: item.product?.name ?? item.productName ?? "Prodotto personalizzato",
       quantity: Number(item.quantity),
       unit: item.unit,
       unitPrice: Number(item.unitPrice),
@@ -1407,7 +1415,7 @@ export async function updateDeliveryNote(id: string, data: unknown) {
 
   // Se c'e' un orderId, ricopiamo gli items dall'ordine
   let itemsToCreate: {
-    productId: string; quantity: number; unit: any; unitPrice: number
+    productId: string | null; productName?: string | null; quantity: number; unit: any; unitPrice: number
     vatRate: number; lineTotal: number; notes: string | null; sortOrder: number
   }[] = []
 
@@ -1419,6 +1427,7 @@ export async function updateDeliveryNote(id: string, data: unknown) {
     if (order) {
       itemsToCreate = order.items.map((item, index) => ({
         productId: item.productId,
+        productName: item.productName,
         quantity: Number(item.quantity),
         unit: item.unit,
         unitPrice: Number(item.unitPrice),
@@ -1658,7 +1667,7 @@ export async function createInvoice(data: unknown) {
 
       invoiceItems.push({
         productId: item.productId,
-        description: item.product.name,
+        description: item.product?.name ?? item.productName ?? "Prodotto personalizzato",
         quantity: Number(item.quantity),
         unit: item.unit,
         unitPrice: Number(item.unitPrice),
@@ -2180,6 +2189,8 @@ export async function generateShoppingListFromOrders(date: string) {
 
   for (const order of orders) {
     for (const item of order.items) {
+      if (!item.productId || !item.product) continue
+
       const existing = productMap.get(item.productId)
       const preferredSupplier = item.product.supplierProducts[0]
 
@@ -3621,7 +3632,10 @@ export async function getTopProducts(limit: number = 10) {
   })
 
   // Recupera i dettagli dei prodotti
-  const productIds = items.map((i) => i.productId)
+  const productIds = items
+    .map((i) => i.productId)
+    .filter((id): id is string => id !== null)
+
   const products = await db.product.findMany({
     where: { id: { in: productIds } },
     select: { id: true, name: true, unit: true },
@@ -3630,6 +3644,15 @@ export async function getTopProducts(limit: number = 10) {
   const productMap = new Map(products.map((p) => [p.id, p]))
 
   return items.map((item) => {
+    if (!item.productId) {
+      return {
+        productId: "custom",
+        productName: "Prodotti Personalizzati",
+        totalQuantity: Number(item._sum.quantity ?? 0),
+        totalRevenue: Number(item._sum.lineTotal ?? 0),
+        unit: "PZ",
+      }
+    }
     const product = productMap.get(item.productId)
     return {
       productId: item.productId,
@@ -4133,7 +4156,7 @@ export async function getPortalProducts(
 }
 
 export async function createPortalOrder(data: {
-  items: Array<{ productId: string; quantity: number; unit: string }>
+  items: Array<{ productId?: string; productName?: string; quantity: number; unit: string }>
   requestedDeliveryDate?: string
   notes?: string
 }) {
@@ -4146,7 +4169,10 @@ export async function createPortalOrder(data: {
   const orderNumber = await getNextNumber("ORDER")
 
   // Recupera prodotti e prezzi personalizzati
-  const productIds = data.items.map((i) => i.productId)
+  const productIds = data.items
+    .map((i) => i.productId)
+    .filter((id): id is string => !!id)
+
   const [products, customerPrices] = await Promise.all([
     db.product.findMany({ where: { id: { in: productIds }, isAvailable: true } }),
     db.customerProductPrice.findMany({
@@ -4161,18 +4187,27 @@ export async function createPortalOrder(data: {
   let vatAmount = 0
 
   const itemsData = data.items.map((item, index) => {
-    const product = productMap.get(item.productId)
-    if (!product) throw new Error(`Prodotto non trovato: ${item.productId}`)
+    let unitPrice = 0
+    let vatRate = 0
+    let productName = item.productName || "Prodotto personalizzato"
 
-    const unitPrice = Number(priceMap.get(item.productId) ?? product.defaultPrice)
-    const vatRate = Number(product.vatRate)
+    if (item.productId) {
+      const product = productMap.get(item.productId)
+      if (product) {
+        unitPrice = Number(priceMap.get(item.productId) ?? product.defaultPrice)
+        vatRate = Number(product.vatRate)
+        productName = product.name
+      }
+    }
+    
     const lineTotal = item.quantity * unitPrice
     const lineVat = lineTotal * (vatRate / 100)
     subtotal += lineTotal
     vatAmount += lineVat
 
     return {
-      productId: item.productId,
+      productId: item.productId ?? null,
+      productName: productName,
       quantity: item.quantity,
       unit: item.unit as any,
       unitPrice,
@@ -4505,4 +4540,67 @@ export async function toggleProductFeatured(productId: string) {
   revalidatePath("/portale")
   revalidatePath("/portale/catalogo")
   return serialize(updated)
+}
+
+export async function scanAndLinkImages() {
+  const session = await requireAuth()
+  const fs = await import("fs")
+  const path = await import("path")
+  const fsPromises = fs.promises
+
+  const productsDir = path.join(process.cwd(), "public", "images", "products")
+  
+  try {
+    await fsPromises.access(productsDir)
+  } catch {
+    return { error: "Cartella immagini non trovata" }
+  }
+
+  const files = await fsPromises.readdir(productsDir)
+  const products = await db.product.findMany()
+
+  let updatedCount = 0
+  const validExtensions = [".jpg", ".jpeg", ".png", ".webp", ".gif"]
+
+  for (const product of products) {
+    if (product.image) continue
+
+    let matchedFile = files.find((file) => {
+      const ext = path.extname(file).toLowerCase()
+      if (!validExtensions.includes(ext)) return false
+      
+      const nameWithoutExt = path.basename(file, ext)
+      return nameWithoutExt === product.slug
+    })
+
+    if (!matchedFile) {
+      matchedFile = files.find((file) => {
+        const ext = path.extname(file).toLowerCase()
+        if (!validExtensions.includes(ext)) return false
+        
+        const nameWithoutExt = path.basename(file, ext)
+        return nameWithoutExt.startsWith(product.slug + "-") || nameWithoutExt.startsWith(product.slug + "_")
+      })
+    }
+
+    if (matchedFile) {
+      const imagePath = `/images/products/${matchedFile}`
+      
+      await db.product.update({
+        where: { id: product.id },
+        data: { image: imagePath },
+      })
+      updatedCount++
+    }
+  }
+  
+  if (updatedCount > 0) {
+    await logActivity(session.user.id, "LINK_IMAGES", "Product", "batch", {
+      count: updatedCount,
+    })
+    revalidatePath("/catalogo")
+    revalidatePath("/portale/catalogo")
+  }
+
+  return { success: true, count: updatedCount }
 }

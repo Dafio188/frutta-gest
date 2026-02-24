@@ -52,6 +52,7 @@ export async function GET(
       unitPrice: Number(item.unitPrice),
       vatRate: Number(item.vatRate),
       lineTotal: Number(item.lineTotal),
+      product: item.product ?? { name: item.productName ?? "Prodotto personalizzato" },
     })),
   }
 

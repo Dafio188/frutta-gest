@@ -27,7 +27,7 @@ import { useUIStore } from "@/stores/ui-store"
 interface CustomerOption { id: string; companyName: string }
 interface OrderOption {
   id: string; orderNumber: string; status: string; total: number; requestedDeliveryDate: string | null
-  items: { id: string; quantity: number; unit: string; unitPrice: number; lineTotal: number; product: { name: string } }[]
+  items: { id: string; quantity: number; unit: string; unitPrice: number; lineTotal: number; productName: string | null; product: { name: string } | null }[]
 }
 
 export default function NuovaBollaPage() {
@@ -211,7 +211,7 @@ function NuovaBollaContent() {
                             <p className="text-xs font-medium text-muted-foreground mb-2">Articoli dell'ordine (verranno copiati nella DDT):</p>
                             {selectedOrder.items.map((item) => (
                               <div key={item.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/30 text-sm">
-                                <span>{item.product?.name || "—"}</span>
+                                <span>{item.product?.name ?? item.productName ?? "Prodotto personalizzato"}</span>
                                 <span className="font-medium">{item.quantity} {(PRODUCT_UNIT_LABELS[item.unit] || item.unit).toLowerCase()}</span>
                               </div>
                             ))}

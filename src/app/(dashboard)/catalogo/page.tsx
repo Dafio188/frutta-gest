@@ -18,7 +18,9 @@ import { EmptyState } from "@/components/ui/empty-state"
 import { PageTransition } from "@/components/animations/page-transition"
 import { formatCurrency } from "@/lib/utils"
 import { PRODUCT_UNIT_LABELS, PRODUCT_CATEGORY_LABELS } from "@/lib/constants"
-import { getProducts } from "@/lib/actions"
+import { getProducts, scanAndLinkImages } from "@/lib/actions"
+import { useUIStore } from "@/stores/ui-store"
+import { RefreshCw } from "lucide-react"
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -56,6 +58,37 @@ export default function CatalogoPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL")
   const [products, setProducts] = useState<ProductRow[]>([])
   const [loading, setLoading] = useState(true)
+  const { addToast } = useUIStore()
+  const [isLinking, setIsLinking] = useState(false)
+
+  const handleLinkImages = async () => {
+    setIsLinking(true)
+    try {
+      const result = await scanAndLinkImages()
+      if ('error' in result) {
+        addToast({
+          title: "Errore",
+          description: result.error,
+          type: "error",
+        })
+      } else {
+        addToast({
+          title: "Immagini collegate",
+          description: `Sono state collegate ${result.count} nuove immagini.`,
+          type: "success",
+        })
+        loadProducts()
+      }
+    } catch (error) {
+      addToast({
+        title: "Errore",
+        description: "Impossibile collegare le immagini.",
+        type: "error",
+      })
+    } finally {
+      setIsLinking(false)
+    }
+  }
 
   const loadProducts = useCallback(async () => {
     setLoading(true)
@@ -96,12 +129,25 @@ export default function CatalogoPage() {
             <h1 className="text-2xl font-semibold tracking-tight">Catalogo Prodotti</h1>
             <p className="text-muted-foreground">Gestisci i tuoi prodotti ortofrutticoli</p>
           </div>
-          <Link href="/catalogo/nuovo">
-            <Button>
-              <Plus className="h-4 w-4" strokeWidth={1.75} />
-              Nuovo Prodotto
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleLinkImages}
+              disabled={isLinking}
+            >
+              {isLinking ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              Collega Immagini
             </Button>
-          </Link>
+            <Link href="/catalogo/nuovo">
+              <Button>
+                <Plus className="mr-2 h-4 w-4" /> Nuovo Prodotto
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* Filters */}

@@ -115,7 +115,8 @@ export default function NuovoOrdinePage() {
   }
 
   const handleProductSelect = (itemId: string, productValue: string, option: ComboboxOption | null) => {
-    if (!option?.meta) {
+    // Clear selection
+    if (!productValue) {
       setItems(items.map((item) =>
         item.id === itemId
           ? { ...item, productId: "", productName: "", unitPrice: 0 }
@@ -123,6 +124,24 @@ export default function NuovoOrdinePage() {
       ))
       return
     }
+
+    // Custom product (no meta)
+    if (!option?.meta) {
+      setItems(items.map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              productId: productValue, // Keep value for Combobox display
+              productName: productValue,
+              unitPrice: 0,
+              // Keep other fields default
+            }
+          : item
+      ))
+      return
+    }
+
+    // DB Product
     const product = option.meta
     setItems(items.map((item) =>
       item.id === itemId
@@ -162,14 +181,18 @@ export default function NuovoOrdinePage() {
         channel: "MANUAL" as const,
         requestedDeliveryDate: deliveryDate ? new Date(deliveryDate) : null,
         notes: notes || null,
-        items: items.map((item) => ({
-          productId: item.productId,
-          quantity: item.quantity,
-          unit: item.unit,
-          unitPrice: item.unitPrice,
-          vatRate: item.vatRate,
-          notes: item.notes || null,
-        })),
+        items: items.map((item) => {
+          const isCustom = !productOptions.some(p => p.value === item.productId)
+          return {
+            productId: isCustom ? null : item.productId,
+            productName: item.productName || item.productId,
+            quantity: item.quantity,
+            unit: item.unit,
+            unitPrice: item.unitPrice,
+            vatRate: item.vatRate,
+            notes: item.notes || null,
+          }
+        }),
       }
 
       await createOrder(orderData)
@@ -305,6 +328,7 @@ export default function NuovoOrdinePage() {
                     searchPlaceholder="Cerca prodotto..."
                     emptyMessage="Nessun prodotto trovato"
                     loading={loadingProducts}
+                    allowCustom={true}
                   />
                 </div>
                 <div className="md:col-span-2">
