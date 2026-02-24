@@ -699,6 +699,7 @@ enum ProductCategoryType {
   SPEZIE
   FRUTTA_ESOTICA
   FRUTTA_SECCA
+  DA_CATALOGARE
 }
 
 enum CustomerType {
