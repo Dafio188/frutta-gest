@@ -31,6 +31,22 @@ export const forgotPasswordSchema = z.object({
   email: z.string().email("Email non valida"),
 })
 
+export const resetPasswordSchema = z
+  .object({
+    token: z.string().min(1, "Token mancante"),
+    password: z
+      .string()
+      .min(8, "La password deve avere almeno 8 caratteri")
+      .regex(/[A-Z]/, "Deve contenere almeno una lettera maiuscola")
+      .regex(/[0-9]/, "Deve contenere almeno un numero")
+      .regex(/[^A-Za-z0-9]/, "Deve contenere almeno un carattere speciale"),
+    confirmPassword: z.string().min(1, "Conferma la password"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Le password non coincidono",
+    path: ["confirmPassword"],
+  })
+
 // ============================================================
 // PRODOTTI
 // ============================================================

@@ -13,10 +13,13 @@ import { motion } from "framer-motion"
 import {
   Search, Package, Plus, Minus, Trash2, ShoppingCart, Calendar, Loader2, ArrowLeft,
 } from "lucide-react"
-import { getPortalProducts, createPortalOrder } from "@/lib/actions"
+import { getPortalProducts, createPortalOrder, getPortalProductsByIds } from "@/lib/actions"
 import { PRODUCT_UNIT_LABELS } from "@/lib/constants"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import { SmartOrderImport } from "@/components/orders/smart-order-import"
+import { ParsedOrderItem, ParsedOrderData } from "@/types"
+import { useUIStore } from "@/stores/ui-store"
 
 interface CartItem {
   tempId: string
@@ -48,6 +51,7 @@ export default function NewPortalOrderPage() {
   const [notes, setNotes] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
+  const { addToast } = useUIStore()
 
   useEffect(() => {
     getPortalProducts({ pageSize: 200, search })
@@ -108,6 +112,89 @@ export default function NewPortalOrderPage() {
     setCart(cart.filter((c) => c.tempId !== tempId))
   }
 
+  const handleImport = async (data: ParsedOrderData) => {
+    const items = data.items
+
+    if (data.deliveryDate) {
+      setDeliveryDate(data.deliveryDate)
+    }
+
+    if (data.notes) {
+      setNotes((prev) => prev ? `${prev}\n${data.notes}` : data.notes!)
+    }
+
+    // 1. Get IDs
+    const ids = items
+      .map((i) => i.productId)
+      .filter((id): id is string => !!id)
+
+    // 2. Fetch products details
+    const productsMap = new Map<string, any>()
+    if (ids.length > 0) {
+      try {
+        setProductsLoading(true)
+        const productsData = await getPortalProductsByIds(ids)
+        if (Array.isArray(productsData)) {
+           productsData.forEach((p: any) => productsMap.set(p.id, p))
+        }
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setProductsLoading(false)
+      }
+    }
+
+    // 3. Create cart items
+    const newCartItems: CartItem[] = items.map((item) => {
+      const product = item.productId ? productsMap.get(item.productId) : null
+      
+      if (product) {
+        return {
+          tempId: product.id,
+          productId: product.id,
+          name: product.name,
+          unit: product.unit,
+          unitPrice: Number(product.customerPrice),
+          vatRate: Number(product.vatRate),
+          quantity: Number(item.quantity) || 1,
+        }
+      } else {
+        return {
+          tempId: `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          name: item.productName,
+          unit: item.unit,
+          unitPrice: 0,
+          vatRate: 4,
+          quantity: Number(item.quantity) || 1,
+          isCustom: true,
+        }
+      }
+    })
+
+    // 4. Update cart
+    setCart((prev) => {
+      const next = [...prev]
+      newCartItems.forEach((newItem) => {
+        const existingIndex = next.findIndex(
+          (c) => (c.productId && c.productId === newItem.productId)
+        )
+
+        if (existingIndex >= 0) {
+          next[existingIndex].quantity += newItem.quantity
+        } else {
+          next.push(newItem)
+        }
+      })
+      return next
+    })
+
+    addToast({
+      type: "success",
+      title: "Ordine importato",
+      description: `${items.length} prodotti aggiunti al carrello`
+    })
+  }
+
   const subtotal = cart.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
   const vatAmount = cart.reduce((sum, item) => sum + item.quantity * item.unitPrice * (item.vatRate / 100), 0)
   const total = subtotal + vatAmount
@@ -141,14 +228,17 @@ export default function NewPortalOrderPage() {
   return (
     <motion.div initial="hidden" animate="show" className="space-y-6">
       {/* Header */}
-      <motion.div variants={fadeUp} className="flex items-center gap-3">
-        <Link href="/portale/ordini" className="flex h-9 w-9 items-center justify-center rounded-xl hover:bg-muted transition-colors">
-          <ArrowLeft className="h-5 w-5" strokeWidth={1.75} />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Nuovo Ordine</h1>
-          <p className="text-muted-foreground mt-0.5">Seleziona i prodotti e la quantità desiderata</p>
+      <motion.div variants={fadeUp} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Link href="/portale/ordini" className="flex h-9 w-9 items-center justify-center rounded-xl hover:bg-muted transition-colors">
+            <ArrowLeft className="h-5 w-5" strokeWidth={1.75} />
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Nuovo Ordine</h1>
+            <p className="text-muted-foreground mt-0.5">Seleziona i prodotti e la quantità desiderata</p>
+          </div>
         </div>
+        <SmartOrderImport onImport={handleImport} />
       </motion.div>
 
       <div className="grid gap-6 lg:grid-cols-5">

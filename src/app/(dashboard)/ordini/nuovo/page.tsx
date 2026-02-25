@@ -19,7 +19,9 @@ import {
 import { cn, formatCurrency } from "@/lib/utils"
 import { PRODUCT_UNIT_LABELS } from "@/lib/constants"
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox"
-import { getCustomers, getProducts, createOrder } from "@/lib/actions"
+import { getCustomers, getProducts, createOrder, getProductsByIds } from "@/lib/actions"
+import { SmartOrderImport } from "@/components/orders/smart-order-import"
+import { ParsedOrderData } from "@/types"
 
 interface OrderItemDraft {
   id: string
@@ -90,6 +92,67 @@ export default function NuovoOrdinePage() {
     } finally {
       setLoadingProducts(false)
     }
+  }
+
+  const handleImport = async (data: ParsedOrderData) => {
+    // 1. Delivery Date
+    if (data.deliveryDate) {
+      setDeliveryDate(data.deliveryDate)
+    }
+
+    // 2. Notes
+    if (data.notes) {
+      setNotes((prev) => (prev ? `${prev}\n${data.notes}` : data.notes!))
+    }
+
+    // 3. Products
+    const itemIds = data.items
+      .map((i) => i.productId)
+      .filter((id): id is string => !!id)
+
+    // Current known products map
+    const productMap = new Map(productOptions.map((o) => [o.value, o.meta]))
+
+    // Find missing IDs
+    const missingIds = itemIds.filter((id) => !productMap.has(id))
+
+    if (missingIds.length > 0) {
+      try {
+        const newProducts = await getProductsByIds(missingIds)
+        // Add to map
+        newProducts.forEach((p: any) => {
+          productMap.set(p.id, p)
+        })
+        // Update options for UI
+        const newOptions = newProducts.map((p: any) => ({
+          value: p.id,
+          label: p.name,
+          subtitle: `${p.category?.name || ""} — ${formatCurrency(Number(p.defaultPrice))}/${PRODUCT_UNIT_LABELS[p.unit as keyof typeof PRODUCT_UNIT_LABELS] || p.unit}`,
+          meta: p,
+        }))
+        setProductOptions((prev) => [...prev, ...newOptions])
+      } catch (err) {
+        console.error("Failed to fetch imported products", err)
+      }
+    }
+
+    // Create items
+    const newItems: OrderItemDraft[] = data.items.map((item) => {
+      const product = item.productId ? productMap.get(item.productId) : undefined
+
+      return {
+        id: crypto.randomUUID(),
+        productId: item.productId || "",
+        productName: product ? product.name : (item.productName || item.productId || "Prodotto sconosciuto"),
+        quantity: item.quantity || 1,
+        unit: product ? product.unit : (item.unit || "KG"),
+        unitPrice: product ? Number(product.defaultPrice) : 0,
+        vatRate: product ? Number(product.vatRate) : 4,
+        notes: "",
+      }
+    })
+
+    setItems((prev) => [...prev, ...newItems])
   }
 
   const addItem = () => {
@@ -210,17 +273,20 @@ export default function NuovoOrdinePage() {
   return (
     <div className="space-y-6 max-w-5xl">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link
-          href="/ordini"
-          className="flex h-10 w-10 items-center justify-center rounded-xl hover:bg-muted transition-colors"
-        >
-          <ArrowLeft className="h-5 w-5" strokeWidth={1.75} />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Nuovo Ordine</h1>
-          <p className="text-muted-foreground">Crea un nuovo ordine manuale</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Link
+            href="/ordini"
+            className="flex h-10 w-10 items-center justify-center rounded-xl hover:bg-muted transition-colors"
+          >
+            <ArrowLeft className="h-5 w-5" strokeWidth={1.75} />
+          </Link>
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Nuovo Ordine</h1>
+            <p className="text-muted-foreground">Crea un nuovo ordine manuale</p>
+          </div>
         </div>
+        <SmartOrderImport onImport={handleImport} />
       </div>
 
       {/* Success message */}

@@ -51,8 +51,8 @@ const DEFAULT_AUTH = {
 
 const DEFAULT_EMAIL = {
   senderEmail: "noreply@fruttagest.it",
-  welcomeTemplate: "Benvenuto in FruttaGest! Il tuo account e stato creato con successo. Accedi alla piattaforma per iniziare a gestire i tuoi ordini di frutta e verdura.",
-  smtpHost: "smtp.resend.com",
+  welcomeTemplate: "Benvenuto in FruttaGest! Il tuo account è stato creato con successo. Accedi alla piattaforma per iniziare a gestire i tuoi ordini di frutta e verdura.",
+  smtpHost: "smtps.aruba.it",
 }
 
 const DEFAULT_MAINTENANCE = {

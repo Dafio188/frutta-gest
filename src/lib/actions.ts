@@ -9,8 +9,10 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { randomUUID } from "crypto"
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { sendEmail } from "@/lib/email"
 import { getNextNumber } from "@/lib/number-sequence"
 import {
   customerSchema,
@@ -23,10 +25,12 @@ import {
   companyInfoSchema,
   purchaseOrderSchema,
   supplierInvoiceSchema,
+  resetPasswordSchema,
 } from "@/lib/validations"
 import { serialize } from "@/lib/utils"
 import type { PaginationParams } from "@/types"
 import { type Prisma, ProductUnit } from "@prisma/client"
+import bcrypt from "bcryptjs"
 
 // ============================================================
 // HELPERS
@@ -457,6 +461,17 @@ export async function getProduct(id: string) {
 
   if (!product) throw new Error("Prodotto non trovato")
   return serialize(product)
+}
+
+export async function getProductsByIds(ids: string[]) {
+  const session = await requireAuth()
+
+  const products = await db.product.findMany({
+    where: { id: { in: ids }, isAvailable: true },
+    include: { category: true },
+  })
+
+  return serialize(products)
 }
 
 export async function createProduct(data: unknown) {
@@ -4171,6 +4186,24 @@ export async function getPortalProducts(
   })
 }
 
+export async function getPortalProductsByIds(ids: string[]) {
+  const { customerId } = await requireCustomer()
+
+  const [products, customerPrices] = await Promise.all([
+    db.product.findMany({ where: { id: { in: ids }, isAvailable: true } }),
+    db.customerProductPrice.findMany({
+      where: { customerId, productId: { in: ids } },
+    }),
+  ])
+
+  const priceMap = new Map(customerPrices.map((cp) => [cp.productId, Number(cp.price)]))
+
+  return serialize(products.map((p) => ({
+    ...p,
+    customerPrice: priceMap.get(p.id) ?? Number(p.defaultPrice),
+  })))
+}
+
 export async function createPortalOrder(data: {
   items: Array<{ productId?: string; productName?: string; quantity: number; unit: string }>
   requestedDeliveryDate?: string
@@ -4262,6 +4295,29 @@ export async function createPortalOrder(data: {
     itemCount: order.items.length,
     channel: "WEB",
   })
+
+  // Invia email di conferma al cliente
+  if (order.customer.email) {
+    const emailSubject = `Conferma Ordine #${order.orderNumber} - FruttaGest`
+    const emailText = `Gentile cliente, il tuo ordine #${order.orderNumber} è stato ricevuto con successo.\n\nTotale: €${Number(order.total).toFixed(2)}\n\nPuoi visualizzare i dettagli del tuo ordine nella tua area riservata.\n\nGrazie per aver scelto FruttaGest.`
+    const emailHtml = `
+      <h1>Ordine Ricevuto</h1>
+      <p>Gentile cliente,</p>
+      <p>Il tuo ordine <strong>#${order.orderNumber}</strong> è stato ricevuto con successo.</p>
+      <p><strong>Totale:</strong> €${Number(order.total).toFixed(2)}</p>
+      <p>Puoi visualizzare i dettagli del tuo ordine nella tua area riservata.</p>
+      <br/>
+      <p>Grazie per aver scelto FruttaGest.</p>
+    `
+
+    // Non bloccare la risposta se l'invio email fallisce, ma logga l'errore
+    sendEmail({
+      to: order.customer.email,
+      subject: emailSubject,
+      text: emailText,
+      html: emailHtml,
+    }).catch((error) => console.error("Errore invio email ordine:", error))
+  }
 
   revalidatePath("/portale/ordini")
   revalidatePath("/portale")
@@ -4694,4 +4750,99 @@ export async function scanAndSyncProducts() {
   }
 
   return { success: true, updated: updatedCount, created: createdCount }
+}
+
+export async function resetPassword(rawEmail: string) {
+  const email = rawEmail.toLowerCase().trim()
+  const user = await db.user.findUnique({ where: { email } })
+  
+  // Return success even if user not found to prevent enumeration
+  if (!user) {
+    return { success: true }
+  }
+
+  const token = randomUUID()
+  const expires = new Date(Date.now() + 3600 * 1000) // 1 hour
+
+  // Delete existing tokens
+  await db.verificationToken.deleteMany({
+    where: { identifier: email }
+  })
+
+  await db.verificationToken.create({
+    data: {
+      identifier: email,
+      token,
+      expires
+    }
+  })
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "http://localhost:3000"
+  const resetLink = `${baseUrl}/reset-password?token=${token}`
+
+  const emailSubject = "Reimposta la tua password - FruttaGest"
+  const emailText = `Hai richiesto di reimpostare la tua password.\n\nClicca sul seguente link per procedere:\n${resetLink}\n\nSe non hai richiesto tu questa operazione, ignora questa email.`
+  const emailHtml = `
+    <h1>Reimposta Password</h1>
+    <p>Hai richiesto di reimpostare la tua password.</p>
+    <p>Clicca sul pulsante qui sotto per procedere:</p>
+    <a href="${resetLink}" style="padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px 0;">Reimposta Password</a>
+    <p style="font-size: 12px; color: #666;">Se il pulsante non funziona, copia e incolla questo link nel tuo browser:<br/>${resetLink}</p>
+    <br/>
+    <p>Se non hai richiesto tu questa operazione, ignora questa email.</p>
+  `
+
+  try {
+    await sendEmail({
+      to: email,
+      subject: emailSubject,
+      text: emailText,
+      html: emailHtml,
+    })
+  } catch (error) {
+    console.error("[resetPassword] Errore invio email:", error)
+  }
+
+  return { success: true }
+}
+
+export async function updatePassword(data: unknown) {
+  const parsed = resetPasswordSchema.safeParse(data)
+  if (!parsed.success) throw new Error(parsed.error.issues.map((e) => e.message).join(", "))
+
+  const { token, password } = parsed.data
+
+  const existingToken = await db.verificationToken.findUnique({
+    where: { token },
+  })
+
+  if (!existingToken) {
+    throw new Error("Token non valido")
+  }
+
+  if (new Date() > existingToken.expires) {
+    await db.verificationToken.delete({ where: { token } })
+    throw new Error("Token scaduto")
+  }
+
+  const existingUser = await db.user.findUnique({
+    where: { email: existingToken.identifier },
+  })
+
+  if (!existingUser) {
+    throw new Error("Utente non trovato")
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10)
+
+  await db.user.update({
+    where: { id: existingUser.id },
+    data: { password: hashedPassword },
+  })
+
+  await db.verificationToken.delete({
+    where: { identifier: existingToken.identifier },
+  })
+
+  return { success: true }
 }

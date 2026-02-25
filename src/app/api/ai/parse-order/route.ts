@@ -16,16 +16,16 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { text } = await req.json()
+    const { text, image } = await req.json()
 
-    if (!text || typeof text !== "string") {
+    if ((!text || typeof text !== "string") && (!image || typeof image !== "string")) {
       return NextResponse.json(
-        { error: "Testo obbligatorio" },
+        { error: "Testo o immagine obbligatori" },
         { status: 400 }
       )
     }
 
-    const parsed = await parseOrderText(text)
+    const parsed = await parseOrderText(text || "", image)
 
     return NextResponse.json({ success: true, data: parsed })
   } catch (error) {

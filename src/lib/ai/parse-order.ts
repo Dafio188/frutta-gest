@@ -1,12 +1,12 @@
 /**
  * AI Order Parsing
  *
- * Usa OpenAI GPT-4 per analizzare testo libero (da WhatsApp, email, audio)
+ * Usa Google Gemini per analizzare testo libero (da WhatsApp, email, audio)
  * e estrarre una lista strutturata di prodotti con quantità.
  * Fa matching fuzzy con il catalogo prodotti esistente.
  */
 
-import OpenAI from "openai"
+import { GoogleGenerativeAI } from "@google/generative-ai"
 import { db } from "@/lib/db"
 import type { ParsedOrderData, ParsedOrderItem } from "@/types"
 
@@ -42,45 +42,65 @@ Rispondi SOLO con JSON valido nel seguente formato:
   "notes": "eventuali note o null"
 }`
 
-export async function parseOrderText(text: string): Promise<ParsedOrderData> {
-  if (!process.env.OPENAI_API_KEY) {
+export async function parseOrderText(text: string, imageUrl?: string): Promise<ParsedOrderData> {
+  if (!process.env.GEMINI_API_KEY) {
+    console.error("GEMINI_API_KEY mancante")
     return { items: [], rawText: text }
   }
 
-  const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+  const model = genAI.getGenerativeModel({
+    model: "gemini-2.0-flash",
+    generationConfig: { responseMimeType: "application/json" }
   })
 
   const productNames = await getProductCatalogNames()
+  
+  const prompt = `${SYSTEM_PROMPT}
 
-  const response = await openai.chat.completions.create({
-    model: "gpt-4o",
-    messages: [
-      { role: "system", content: SYSTEM_PROMPT },
-      {
-        role: "user",
-        content: `Catalogo prodotti disponibili:\n${productNames.join(", ")}\n\nTesto dell'ordine:\n${text}`,
-      },
-    ],
-    response_format: { type: "json_object" },
-    temperature: 0.1,
-    max_tokens: 2000,
-  })
+Catalogo prodotti disponibili:
+${productNames.join(", ")}
 
-  const content = response.choices[0]?.message?.content
-  if (!content) {
-    return { items: [], rawText: text }
+Testo dell'ordine:
+${text || "Nessun testo fornito, analizza l'immagine."}`
+
+  const parts: any[] = [prompt]
+
+  if (imageUrl) {
+    // imageUrl format: "data:image/jpeg;base64,/9j/4AAQSkZJRg..."
+    const matches = imageUrl.match(/^data:(.+);base64,(.+)$/)
+    if (matches && matches.length === 3) {
+      parts.push({
+        inlineData: {
+          mimeType: matches[1],
+          data: matches[2]
+        }
+      })
+    }
   }
 
-  const parsed = JSON.parse(content)
-  const matchedItems = await matchProductsToIds(parsed.items || [])
+  try {
+    const result = await model.generateContent(parts)
+    const response = await result.response
+    const textResponse = response.text()
+    
+    if (!textResponse) {
+      return { items: [], rawText: text }
+    }
 
-  return {
-    items: matchedItems,
-    customerName: parsed.customerName || undefined,
-    deliveryDate: parsed.deliveryDate || undefined,
-    notes: parsed.notes || undefined,
-    rawText: text,
+    const parsed = JSON.parse(textResponse)
+    const matchedItems = await matchProductsToIds(parsed.items || [])
+
+    return {
+      items: matchedItems,
+      customerName: parsed.customerName || undefined,
+      deliveryDate: parsed.deliveryDate || undefined,
+      notes: parsed.notes || undefined,
+      rawText: text,
+    }
+  } catch (error) {
+    console.error("Errore Gemini:", error)
+    return { items: [], rawText: text }
   }
 }
 

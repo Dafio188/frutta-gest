@@ -11,6 +11,7 @@ import { Mail, Leaf, ArrowLeft, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { forgotPasswordSchema } from "@/lib/validations"
+import { resetPassword } from "@/lib/actions"
 
 const stagger = {
   hidden: { opacity: 0 },
@@ -39,7 +40,7 @@ export default function ForgotPasswordPage() {
 
     setLoading(true)
     try {
-      await new Promise((r) => setTimeout(r, 1500))
+      await resetPassword(email)
       setSent(true)
     } catch {
       setError("Errore durante l'invio. Riprova.")
