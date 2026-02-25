@@ -4841,7 +4841,7 @@ export async function updatePassword(data: unknown) {
   })
 
   await db.verificationToken.delete({
-    where: { identifier: existingToken.identifier },
+    where: { token },
   })
 
   return { success: true }
