@@ -60,6 +60,7 @@ export type CustomerWithRelations = Customer & {
   orders: Order[]
   invoices: Invoice[]
   payments: Payment[]
+  shoppingListItems: ShoppingListItem[]
 }
 
 // ============================================================
@@ -145,6 +146,7 @@ export type ShoppingListWithItems = ShoppingList & {
   items: (ShoppingListItem & {
     product: Product
     supplier: Supplier | null
+    customer: Customer | null
   })[]
 }
 

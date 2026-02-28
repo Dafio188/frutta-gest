@@ -880,9 +880,10 @@ export async function updateOrderStatus(id: string, status: string) {
       // Usa data locale per evitare shift di timezone con toISOString()
       const d = currentOrder.requestedDeliveryDate
       const deliveryDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+      console.log(`[Auto-genera lista spesa] Ordine ${order.orderNumber} confermato. Generazione lista per data: ${deliveryDate}`)
       await generateShoppingListFromOrders(deliveryDate)
     } catch (err) {
-      console.warn("[Auto-genera lista spesa] Fallita:", err)
+      console.error("[Auto-genera lista spesa] Fallita:", err)
     }
   }
 
@@ -2055,6 +2056,8 @@ export async function getShoppingLists(params: PaginationParams & { status?: str
           include: {
             product: { include: { category: true } },
             supplier: true,
+            // Include customer for client view
+            customer: true,
           },
         },
         _count: { select: { items: true } },
@@ -2085,6 +2088,7 @@ export async function getShoppingList(id: string) {
         include: {
           product: { include: { category: true } },
           supplier: true,
+          customer: true,
         },
       },
     },
@@ -2151,8 +2155,6 @@ export async function generateShoppingListFromOrders(date: string) {
   const session = await requireAuth()
 
   // Usa la data come stringa locale (YYYY-MM-DD) per evitare problemi di timezone
-  // Cerchiamo ordini la cui requestedDeliveryDate cade nel giorno selezionato
-  // considerando che il DB potrebbe avere date salvate con offset timezone
   const [year, month, day] = date.split("-").map(Number)
   const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0)
   const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999)
@@ -2170,6 +2172,7 @@ export async function generateShoppingListFromOrders(date: string) {
       },
     },
     include: {
+      customer: true,
       items: {
         include: {
           product: {
@@ -2190,78 +2193,29 @@ export async function generateShoppingListFromOrders(date: string) {
     return { error: "Nessun ordine confermato trovato per questa data" }
   }
 
-  // Aggrega i prodotti sommando le quantita'
-  const productMap = new Map<
-    string,
-    {
-      productId: string | null
-      productName: string
-      totalQuantity: number
-      unit: string
-      supplierId: string | null
-      supplierPrice: number | null
-    }
-  >()
+  // Prepara items separati per cliente (non aggregati)
+  const listItems = []
 
   for (const order of orders) {
     for (const item of order.items) {
-      // Supporta sia prodotti a catalogo che custom (senza productId)
-      const key = item.productId || `custom:${item.productName}`
-      
-      const existing = productMap.get(key)
-      const preferredSupplier = item.product?.supplierProducts?.[0]
+      const defaultSupplier = item.product?.supplierProducts[0]?.supplierId ?? null
+      const defaultPrice = item.product?.supplierProducts[0]?.price ?? null
 
-      if (existing) {
-        existing.totalQuantity += Number(item.quantity)
-      } else {
-        productMap.set(key, {
-          productId: item.productId,
-          productName: item.product?.name || item.productName || "Prodotto Sconosciuto",
-          totalQuantity: Number(item.quantity),
-          unit: item.unit,
-          supplierId: preferredSupplier?.supplierId ?? null,
-          supplierPrice: preferredSupplier ? Number(preferredSupplier.price) : null,
-        })
-      }
+      listItems.push({
+        productId: item.productId,
+        productName: item.productName || item.product?.name,
+        customerId: order.customerId,
+        isInMaxiList: false, // Default: nella card cliente
+        totalQuantity: Number(item.quantity),
+        availableStock: 0, // Stock calcolato dinamicamente o in fase di merge
+        netQuantity: Number(item.quantity),
+        unit: item.unit as any,
+        supplierId: defaultSupplier,
+        supplierPrice: defaultPrice ? Number(defaultPrice) : null,
+        notes: item.notes,
+      })
     }
   }
-
-  // Calcola giacenza attuale per ogni prodotto nella lista
-  const productIds = Array.from(productMap.values())
-    .map((p) => p.productId)
-    .filter((id): id is string => id !== null)
-
-  const stockMovements = await db.stockMovement.findMany({
-    where: { productId: { in: productIds } },
-    select: { productId: true, type: true, quantity: true },
-  })
-
-  const stockByProduct = new Map<string, number>()
-  for (const m of stockMovements) {
-    const current = stockByProduct.get(m.productId) || 0
-    const qty = Number(m.quantity)
-    if (m.type === "CARICO" || m.type === "RETTIFICA_POS") {
-      stockByProduct.set(m.productId, current + qty)
-    } else {
-      stockByProduct.set(m.productId, current - qty)
-    }
-  }
-
-  // Prepara items con giacenza e fabbisogno netto
-  const listItems = Array.from(productMap.values()).map((item) => {
-    const availableStock = item.productId ? Math.max(0, stockByProduct.get(item.productId) || 0) : 0
-    const netQuantity = Math.max(0, item.totalQuantity - availableStock)
-    return {
-      productId: item.productId,
-      productName: item.productName,
-      totalQuantity: item.totalQuantity,
-      availableStock,
-      netQuantity,
-      unit: item.unit as any,
-      supplierId: item.supplierId,
-      supplierPrice: item.supplierPrice,
-    }
-  })
 
   // Verifica se esiste gia' una lista per questa data
   const existingList = await db.shoppingList.findUnique({
@@ -2281,14 +2235,14 @@ export async function generateShoppingListFromOrders(date: string) {
         items: { create: listItems },
       },
       include: {
-        items: { include: { product: true, supplier: true } },
+        items: { include: { product: true, supplier: true, customer: true } },
       },
     })
 
     await logActivity(session.user.id, "REGENERATE_SHOPPING_LIST", "ShoppingList", list.id, {
       date,
       orderCount: orders.length,
-      itemCount: productMap.size,
+      itemCount: listItems.length,
     })
 
     revalidatePath("/lista-spesa")
@@ -2303,18 +2257,81 @@ export async function generateShoppingListFromOrders(date: string) {
       items: { create: listItems },
     },
     include: {
-      items: { include: { product: true, supplier: true } },
+      items: { include: { product: true, supplier: true, customer: true } },
     },
   })
 
   await logActivity(session.user.id, "GENERATE_SHOPPING_LIST", "ShoppingList", list.id, {
     date,
     orderCount: orders.length,
-    itemCount: productMap.size,
+    itemCount: listItems.length,
   })
 
   revalidatePath("/lista-spesa")
   return serialize(list)
+}
+
+export async function toggleShoppingListItemMaxiList(itemId: string, isInMaxiList: boolean) {
+  const session = await requireAuth()
+  
+  const item = await db.shoppingListItem.update({
+    where: { id: itemId },
+    data: { isInMaxiList },
+    include: { customer: true, product: true }
+  })
+
+  revalidatePath("/lista-spesa")
+  return serialize(item)
+}
+
+export async function bulkToggleMaxiList(itemIds: string[], isInMaxiList: boolean) {
+  const session = await requireAuth()
+
+  const result = await db.shoppingListItem.updateMany({
+    where: { id: { in: itemIds } },
+    data: { isInMaxiList }
+  })
+
+  revalidatePath("/lista-spesa")
+  return serialize({ count: result.count })
+}
+
+export async function mergeShoppingListItems(targetItemId: string, sourceItemIds: string[]) {
+  const session = await requireAuth()
+
+  const targetItem = await db.shoppingListItem.findUnique({ where: { id: targetItemId } })
+  if (!targetItem) throw new Error("Item target non trovato")
+
+  const sourceItems = await db.shoppingListItem.findMany({ where: { id: { in: sourceItemIds } } })
+  if (sourceItems.length === 0) throw new Error("Items sorgente non trovati")
+
+  // Calcola somma quantità
+  let totalQty = Number(targetItem.totalQuantity)
+  let notes = targetItem.notes ? [targetItem.notes] : []
+
+  for (const source of sourceItems) {
+    totalQty += Number(source.totalQuantity)
+    if (source.notes) notes.push(source.notes)
+  }
+
+  // Aggiorna target
+  const updated = await db.shoppingListItem.update({
+    where: { id: targetItemId },
+    data: {
+      totalQuantity: totalQty,
+      netQuantity: totalQty, // Assumiamo net = total per ora
+      notes: notes.join("; "),
+      isInMaxiList: true, // Forziamo in maxi list
+    }
+  })
+
+  // Elimina source
+  await db.shoppingListItem.deleteMany({
+    where: { id: { in: sourceItemIds } }
+  })
+
+  revalidatePath("/lista-spesa")
+  return serialize(updated)
 }
 
 export async function updateShoppingListItem(itemId: string, data: { isOrdered?: boolean; totalQuantity?: number; supplierId?: string | null; supplierPrice?: number | null; notes?: string }) {

@@ -165,6 +165,7 @@ model Customer {
   orders                Order[]
   payments              Payment[]              @relation("CustomerPayments")
   portalUser            User?
+  shoppingListItems     ShoppingListItem[]
 
   @@index([type])
   @@index([city])
@@ -542,9 +543,12 @@ model ShoppingListItem {
   product        Product?     @relation(fields: [productId], references: [id])
   shoppingList   ShoppingList @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
   supplier       Supplier?    @relation(fields: [supplierId], references: [id])
+  customerId     String?
+  customer       Customer?    @relation(fields: [customerId], references: [id])
+  isInMaxiList   Boolean      @default(false)
 
-  @@unique([shoppingListId, productId, productName])
   @@index([shoppingListId])
+  @@index([customerId])
 }
 
 model WhatsAppMessage {

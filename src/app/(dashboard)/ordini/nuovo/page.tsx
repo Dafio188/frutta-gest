@@ -23,6 +23,10 @@ import { getCustomers, getProducts, createOrder, getProductsByIds } from "@/lib/
 import { SmartOrderImport } from "@/components/orders/smart-order-import"
 import { ParsedOrderData } from "@/types"
 
+function generateTempId() {
+  return Math.random().toString(36).substring(2, 9) + Date.now().toString(36)
+}
+
 interface OrderItemDraft {
   id: string
   productId: string
@@ -141,7 +145,7 @@ export default function NuovoOrdinePage() {
       const product = item.productId ? productMap.get(item.productId) : undefined
 
       return {
-        id: crypto.randomUUID(),
+        id: generateTempId(),
         productId: item.productId || "",
         productName: product ? product.name : (item.productName || item.productId || "Prodotto sconosciuto"),
         quantity: item.quantity || 1,
@@ -159,7 +163,7 @@ export default function NuovoOrdinePage() {
     setItems([
       ...items,
       {
-        id: crypto.randomUUID(),
+        id: generateTempId(),
         productId: "",
         productName: "",
         quantity: 1,
