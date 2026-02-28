@@ -241,10 +241,11 @@ export default function ModificaOrdinePage({ params }: { params: Promise<{ id: s
           <div>
             <label className="text-sm font-medium mb-1.5 block">
               <Calendar className="inline h-4 w-4 mr-1" strokeWidth={1.75} />
-              Data Consegna Richiesta
+              Data Consegna Richiesta *
             </label>
             <input
               type="date"
+              required
               value={deliveryDate}
               onChange={(e) => setDeliveryDate(e.target.value)}
               disabled={locked}

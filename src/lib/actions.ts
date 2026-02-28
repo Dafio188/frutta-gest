@@ -819,6 +819,10 @@ export async function updateOrderStatus(id: string, status: string) {
   })
   if (!currentOrder) throw new Error("Ordine non trovato")
 
+  if (status === "CONFIRMED" && !currentOrder.requestedDeliveryDate) {
+    throw new Error("Data di consegna mancante. Modifica l'ordine e inserisci una data di consegna prima di confermare.")
+  }
+
   const order = await db.order.update({
     where: { id },
     data: { status: status as any },

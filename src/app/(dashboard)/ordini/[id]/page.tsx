@@ -139,11 +139,11 @@ export default function OrdineDetailPage({ params }: { params: Promise<{ id: str
         title: "Stato aggiornato",
         description: `Ordine ${order.orderNumber} aggiornato a "${ORDER_STATUS_LABELS[newStatus]}"`,
       })
-    } catch (err) {
+    } catch (err: any) {
       addToast({
         type: "error",
         title: "Errore",
-        description: "Impossibile aggiornare lo stato dell'ordine",
+        description: err.message || "Impossibile aggiornare lo stato dell'ordine",
       })
     } finally {
       setProcessing(false)
