@@ -799,6 +799,18 @@ export async function updateOrder(id: string, data: unknown) {
     total: Number(order.total),
   })
 
+  // Se l'ordine è confermato e ha una data, aggiorna la lista della spesa
+  if ((order.status === "CONFIRMED" || order.status === "IN_PREPARATION") && order.requestedDeliveryDate) {
+    try {
+      const d = order.requestedDeliveryDate
+      const deliveryDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+      console.log(`[Update Order] Ordine ${order.orderNumber} modificato. Rigenerazione lista per: ${deliveryDate}`)
+      await generateShoppingListFromOrders(deliveryDate)
+    } catch (err) {
+      console.error("[Update Order] Rigenerazione lista fallita:", err)
+    }
+  }
+
   revalidatePath("/ordini")
   revalidatePath(`/ordini/${id}`)
   revalidatePath("/dashboard")
@@ -891,6 +903,18 @@ export async function updateOrderStatus(id: string, status: string) {
     }
   }
 
+  // Se l'ordine viene annullato o riportato a RECEIVED, aggiorna la lista (rimuovendo gli articoli)
+  if ((status === "CANCELLED" || status === "RECEIVED") && currentOrder.requestedDeliveryDate && (currentOrder.status === "CONFIRMED" || currentOrder.status === "IN_PREPARATION")) {
+    try {
+      const d = currentOrder.requestedDeliveryDate
+      const deliveryDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+      console.log(`[Auto-aggiorna lista] Ordine ${order.orderNumber} annullato/resettato. Rigenerazione lista per: ${deliveryDate}`)
+      await generateShoppingListFromOrders(deliveryDate)
+    } catch (err) {
+      console.error("[Auto-aggiorna lista] Fallita:", err)
+    }
+  }
+
   await logActivity(session.user.id, "UPDATE_ORDER_STATUS", "Order", order.id, {
     orderNumber: order.orderNumber,
     newStatus: status,
@@ -928,6 +952,18 @@ export async function deleteOrder(id: string) {
       where: { id },
       data: { status: "CANCELLED" },
     })
+
+    // Se l'ordine era confermato/in preparazione, aggiorna la lista della spesa per rimuovere gli articoli
+    if ((order.status === "CONFIRMED" || order.status === "IN_PREPARATION") && order.requestedDeliveryDate) {
+      try {
+        const d = order.requestedDeliveryDate
+        const deliveryDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+        console.log(`[Delete Order] Ordine ${order.orderNumber} annullato. Rigenerazione lista per: ${deliveryDate}`)
+        await generateShoppingListFromOrders(deliveryDate)
+      } catch (err) {
+        console.error("[Delete Order] Rigenerazione lista fallita:", err)
+      }
+    }
 
     await logActivity(session.user.id, "CANCEL_ORDER", "Order", id, {
       orderNumber: order.orderNumber,
