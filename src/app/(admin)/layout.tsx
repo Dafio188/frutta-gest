@@ -15,7 +15,7 @@ export default function AdminLayout({
   children: React.ReactNode
 }) {
   return (
-    <SessionProvider>
+    <>
       <div className="flex h-screen overflow-hidden">
         <Sidebar />
         <div className="flex flex-1 flex-col overflow-hidden">
@@ -25,6 +25,6 @@ export default function AdminLayout({
           </main>
         </div>
       </div>
-    </SessionProvider>
+    </>
   )
 }

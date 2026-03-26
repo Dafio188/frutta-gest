@@ -17,6 +17,7 @@ import {
   Info,
   LayoutGrid,
 } from "lucide-react"
+import { PublicHeader } from "@/components/layouts/public-header"
 
 const suiteApps = [
   {
@@ -265,57 +266,7 @@ const aboutBlocks = [
 export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-white dark:from-emerald-950/20 dark:via-background dark:to-background">
-      {/* ============================================= */}
-      {/* NAVBAR                                        */}
-      {/* ============================================= */}
-      <nav className="sticky top-0 z-50 border-b border-border/40 bg-white/70 backdrop-blur-xl dark:bg-background/70">
-        <div className="mx-auto flex h-24 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link href="/" className="flex items-center gap-3">
-            <Image
-              src="/LOGO.png"
-              alt="FruttaGest"
-              width={360}
-              height={120}
-              priority
-              className="h-20 w-auto"
-            />
-          </Link>
-          <div className="hidden items-center gap-8 md:flex">
-            <Link
-              href="#suite"
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Applicativi
-            </Link>
-            <Link
-              href="#confronto"
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Confronto
-            </Link>
-            <Link
-              href="/contact"
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Contatti
-            </Link>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/login"
-              className="rounded-xl px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Accedi
-            </Link>
-            <Link
-              href="/register"
-              className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-all hover:bg-primary/90 hover:shadow-md"
-            >
-              Inizia Ora
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <PublicHeader />
 
       {/* ============================================= */}
       {/* HERO SECTION                                  */}

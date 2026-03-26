@@ -16,7 +16,7 @@ export default function CustomerPortalLayout({
   children: React.ReactNode
 }) {
   return (
-    <SessionProvider>
+    <>
       <div className="flex h-screen overflow-hidden">
         <CustomerSidebar />
         <div className="flex flex-1 flex-col overflow-hidden">
@@ -27,6 +27,6 @@ export default function CustomerPortalLayout({
         </div>
       </div>
       <ToastContainer />
-    </SessionProvider>
+    </>
   )
 }

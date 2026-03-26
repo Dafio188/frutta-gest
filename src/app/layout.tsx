@@ -42,6 +42,8 @@ export const metadata: Metadata = {
   },
 }
 
+import { AuthProvider } from "@/providers/auth-provider"
+
 export default function RootLayout({
   children,
 }: {
@@ -55,7 +57,9 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
       <body className={`${inter.variable} font-sans antialiased`} suppressHydrationWarning>
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
         <div id="toast-portal" />
       </body>
     </html>

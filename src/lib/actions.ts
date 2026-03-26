@@ -802,9 +802,13 @@ export async function updateOrder(id: string, data: unknown) {
   // Se l'ordine è confermato e ha una data, aggiorna la lista della spesa
   if ((order.status === "CONFIRMED" || order.status === "IN_PREPARATION") && order.requestedDeliveryDate) {
     try {
-      const d = order.requestedDeliveryDate
-      const deliveryDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
-      console.log(`[Update Order] Ordine ${order.orderNumber} modificato. Rigenerazione lista per: ${deliveryDate}`)
+      const d = new Date(order.requestedDeliveryDate)
+      const year = d.getFullYear()
+      const month = String(d.getMonth() + 1).padStart(2, "0")
+      const day = String(d.getDate()).padStart(2, "0")
+      const deliveryDate = `${year}-${month}-${day}`
+      
+      console.log(`[Update Order] Ordine ${order.orderNumber} modificato. Rigenerazione lista per (local): ${deliveryDate}`)
       await generateShoppingListFromOrders(deliveryDate)
     } catch (err) {
       console.error("[Update Order] Rigenerazione lista fallita:", err)
@@ -893,10 +897,14 @@ export async function updateOrderStatus(id: string, status: string) {
   // Auto-genera lista della spesa quando ordine confermato
   if (status === "CONFIRMED" && currentOrder.requestedDeliveryDate) {
     try {
-      // Usa data locale per evitare shift di timezone con toISOString()
-      const d = currentOrder.requestedDeliveryDate
-      const deliveryDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
-      console.log(`[Auto-genera lista spesa] Ordine ${order.orderNumber} confermato. Generazione lista per data: ${deliveryDate}`)
+      // Usa data UTC per evitare shift di timezone
+      const d = new Date(currentOrder.requestedDeliveryDate)
+      const year = d.getFullYear()
+      const month = String(d.getMonth() + 1).padStart(2, "0")
+      const day = String(d.getDate()).padStart(2, "0")
+      const deliveryDate = `${year}-${month}-${day}`
+      
+      console.log(`[Auto-genera lista spesa] Ordine ${order.orderNumber} confermato. Generazione lista (local): ${deliveryDate}`)
       await generateShoppingListFromOrders(deliveryDate)
     } catch (err) {
       console.error("[Auto-genera lista spesa] Fallita:", err)
@@ -906,9 +914,13 @@ export async function updateOrderStatus(id: string, status: string) {
   // Se l'ordine viene annullato o riportato a RECEIVED, aggiorna la lista (rimuovendo gli articoli)
   if ((status === "CANCELLED" || status === "RECEIVED") && currentOrder.requestedDeliveryDate && (currentOrder.status === "CONFIRMED" || currentOrder.status === "IN_PREPARATION")) {
     try {
-      const d = currentOrder.requestedDeliveryDate
-      const deliveryDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
-      console.log(`[Auto-aggiorna lista] Ordine ${order.orderNumber} annullato/resettato. Rigenerazione lista per: ${deliveryDate}`)
+      const d = new Date(currentOrder.requestedDeliveryDate)
+      const year = d.getFullYear()
+      const month = String(d.getMonth() + 1).padStart(2, "0")
+      const day = String(d.getDate()).padStart(2, "0")
+      const deliveryDate = `${year}-${month}-${day}`
+      
+      console.log(`[Auto-aggiorna lista] Ordine ${order.orderNumber} annullato/resettato. Rigenerazione lista (local): ${deliveryDate}`)
       await generateShoppingListFromOrders(deliveryDate)
     } catch (err) {
       console.error("[Auto-aggiorna lista] Fallita:", err)
@@ -956,9 +968,13 @@ export async function deleteOrder(id: string) {
     // Se l'ordine era confermato/in preparazione, aggiorna la lista della spesa per rimuovere gli articoli
     if ((order.status === "CONFIRMED" || order.status === "IN_PREPARATION") && order.requestedDeliveryDate) {
       try {
-        const d = order.requestedDeliveryDate
-        const deliveryDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
-        console.log(`[Delete Order] Ordine ${order.orderNumber} annullato. Rigenerazione lista per: ${deliveryDate}`)
+        const d = new Date(order.requestedDeliveryDate)
+        const year = d.getFullYear()
+        const month = String(d.getMonth() + 1).padStart(2, "0")
+        const day = String(d.getDate()).padStart(2, "0")
+        const deliveryDate = `${year}-${month}-${day}`
+
+        console.log(`[Delete Order] Ordine ${order.orderNumber} annullato. Rigenerazione lista (local): ${deliveryDate}`)
         await generateShoppingListFromOrders(deliveryDate)
       } catch (err) {
         console.error("[Delete Order] Rigenerazione lista fallita:", err)
@@ -2194,11 +2210,13 @@ export async function createShoppingList(data: {
 export async function generateShoppingListFromOrders(date: string) {
   const session = await requireAuth()
 
-  // Usa la data come stringa locale (YYYY-MM-DD) per evitare problemi di timezone
+  // Usa la data locale (YYYY-MM-DD)
   const [year, month, day] = date.split("-").map(Number)
   const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0)
   const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999)
   const targetDate = startOfDay
+
+  console.log(`[generateShoppingList] Processing for LOCAL date: ${date} (Range: ${startOfDay.toISOString()} - ${endOfDay.toISOString()})`)
 
   // Trova tutti gli ordini confermati per la data di consegna richiesta
   const orders = await db.order.findMany({
@@ -2211,6 +2229,7 @@ export async function generateShoppingListFromOrders(date: string) {
         in: ["CONFIRMED", "IN_PREPARATION"],
       },
     },
+    orderBy: { createdAt: "asc" },
     include: {
       customer: true,
       items: {
@@ -2233,69 +2252,200 @@ export async function generateShoppingListFromOrders(date: string) {
     return { error: "Nessun ordine confermato trovato per questa data" }
   }
 
-  // Prepara items separati per cliente (non aggregati)
-  const listItems = []
+  // Prepara items aggregati per cliente + prodotto
+  const newItemsMap = new Map<string, any>()
 
   for (const order of orders) {
     for (const item of order.items) {
+      // Chiave univoca per aggregazione: Cliente + Prodotto
+      const key = `${order.customerId}-${item.productId}`
+      
       const defaultSupplier = item.product?.supplierProducts[0]?.supplierId ?? null
       const defaultPrice = item.product?.supplierProducts[0]?.price ?? null
+      const itemNotes = item.notes ? item.notes.trim() : ""
 
-      listItems.push({
-        productId: item.productId,
-        productName: item.productName || item.product?.name,
-        customerId: order.customerId,
-        isInMaxiList: false, // Default: nella card cliente
-        totalQuantity: Number(item.quantity),
-        availableStock: 0, // Stock calcolato dinamicamente o in fase di merge
-        netQuantity: Number(item.quantity),
-        unit: item.unit as any,
-        supplierId: defaultSupplier,
-        supplierPrice: defaultPrice ? Number(defaultPrice) : null,
-        notes: item.notes,
-      })
+      if (newItemsMap.has(key)) {
+        // Aggrega esistente
+        const existing = newItemsMap.get(key)
+        existing.totalQuantity += Number(item.quantity)
+        existing.netQuantity += Number(item.quantity)
+        
+        // Unisci note se diverse
+        if (itemNotes && !existing.notes?.includes(itemNotes)) {
+          existing.notes = existing.notes ? `${existing.notes}; ${itemNotes}` : itemNotes
+        }
+      } else {
+        // Crea nuova voce
+        newItemsMap.set(key, {
+          productId: item.productId,
+          productName: item.productName || item.product?.name,
+          customerId: order.customerId,
+          isInMaxiList: false, // Default: nella card cliente
+          totalQuantity: Number(item.quantity),
+          availableStock: 0,
+          netQuantity: Number(item.quantity),
+          unit: item.unit as any,
+          supplierId: defaultSupplier,
+          supplierPrice: defaultPrice ? Number(defaultPrice) : null,
+          notes: itemNotes || null,
+        })
+      }
     }
   }
 
   // Verifica se esiste gia' una lista per questa data
-  const existingList = await db.shoppingList.findUnique({
+  let list = await db.shoppingList.findUnique({
     where: { date: targetDate },
+    include: { items: true },
   })
 
-  if (existingList) {
-    // Aggiorna la lista esistente: elimina vecchi items e ricrea
-    await db.shoppingListItem.deleteMany({
-      where: { shoppingListId: existingList.id },
-    })
-
-    const list = await db.shoppingList.update({
-      where: { id: existingList.id },
-      data: {
-        notes: `Generata automaticamente da ${orders.length} ordini`,
-        items: { create: listItems },
-      },
-      include: {
-        items: { include: { product: true, supplier: true, customer: true } },
-      },
-    })
-
-    await logActivity(session.user.id, "REGENERATE_SHOPPING_LIST", "ShoppingList", list.id, {
-      date,
-      orderCount: orders.length,
-      itemCount: listItems.length,
-    })
-
-    revalidatePath("/lista-spesa")
-    return serialize(list)
+  // Calcola stock attuale per i prodotti richiesti
+  const productIds = new Set<string>()
+  for (const item of newItemsMap.values()) {
+    if (item.productId) productIds.add(item.productId)
   }
 
-  // Crea nuova lista
-  const list = await db.shoppingList.create({
-    data: {
-      date: targetDate,
-      notes: `Generata automaticamente da ${orders.length} ordini`,
-      items: { create: listItems },
-    },
+  const stockAggregations = await db.stockMovement.groupBy({
+    by: ['productId', 'type'],
+    where: { productId: { in: Array.from(productIds) } },
+    _sum: { quantity: true }
+  })
+
+  const productStock = new Map<string, number>()
+  for (const agg of stockAggregations) {
+    const pid = agg.productId
+    const qty = Number(agg._sum.quantity || 0)
+    const current = productStock.get(pid) || 0
+    if (agg.type === 'CARICO' || agg.type === 'RETTIFICA_POS') {
+      productStock.set(pid, current + qty)
+    } else {
+      productStock.set(pid, current - qty)
+    }
+  }
+
+  // Applica logica stock e calcola netQuantity
+  const itemsByProduct = new Map<string, any[]>()
+  for (const item of newItemsMap.values()) {
+    if (!item.productId) continue
+    const list = itemsByProduct.get(item.productId) || []
+    list.push(item)
+    itemsByProduct.set(item.productId, list)
+  }
+
+  for (const [productId, items] of itemsByProduct) {
+    const totalStock = productStock.get(productId) || 0
+    let remainingStock = totalStock
+
+    // Ordina items? Per ora manteniamo l'ordine di iterazione (che dipende dall'ordine degli ordini)
+    
+    for (const item of items) {
+      item.availableStock = totalStock // Mostra stock totale disponibile a magazzino
+      
+      if (remainingStock <= 0) {
+        item.netQuantity = item.totalQuantity
+      } else {
+        if (remainingStock >= item.totalQuantity) {
+          item.netQuantity = 0
+          remainingStock -= item.totalQuantity
+        } else {
+          item.netQuantity = item.totalQuantity - remainingStock
+          remainingStock = 0
+        }
+      }
+    }
+  }
+
+  // Se non esiste, creala vuota e poi popola
+  if (!list) {
+    list = await db.shoppingList.create({
+      data: {
+        date: targetDate,
+        notes: `Generata automaticamente da ${orders.length} ordini`,
+        status: "DRAFT",
+      },
+      include: { items: true },
+    })
+  } else {
+    // Aggiorna note lista
+    await db.shoppingList.update({
+      where: { id: list.id },
+      data: { notes: `Generata automaticamente da ${orders.length} ordini` },
+    })
+  }
+
+  // Sincronizzazione Intelligente (Upsert/Delete)
+  const operations = []
+  const processedItemIds = new Set<string>()
+
+  // A. Aggiorna o Crea items
+  for (const [key, newItemData] of newItemsMap) {
+    const [customerId, productId] = key.split("-")
+    
+    // Cerca item esistente nella lista corrente
+    const existingItem = list.items.find(
+      (i) => i.customerId === customerId && i.productId === productId
+    )
+
+    if (existingItem) {
+      processedItemIds.add(existingItem.id)
+      
+      // Logica aggiornamento: preserva flag manuali ma sincronizza quantità
+      operations.push(
+        db.shoppingListItem.update({
+          where: { id: existingItem.id },
+          data: {
+            totalQuantity: newItemData.totalQuantity,
+            netQuantity: newItemData.netQuantity, 
+            availableStock: newItemData.availableStock,
+            productName: newItemData.productName,
+            // Preserva fornitore/prezzo se già impostati, altrimenti usa nuovi default
+            supplierId: existingItem.supplierId ?? newItemData.supplierId,
+            supplierPrice: existingItem.supplierPrice ?? newItemData.supplierPrice,
+            // Sovrascrivi note per mantenere sincronizzazione con ordini
+            notes: newItemData.notes,
+          },
+        })
+      )
+    } else {
+      // Crea nuovo item
+      operations.push(
+        db.shoppingListItem.create({
+          data: {
+            shoppingListId: list.id,
+            ...newItemData,
+          },
+        })
+      )
+    }
+  }
+
+  // B. Elimina items che non sono più negli ordini (orfani)
+  // Elimina solo items derivati da ordini (con customerId). 
+  // Se un item non ha customerId (manuale), lo manteniamo.
+  const itemsToDelete = list.items.filter((i) => {
+    // Se è stato processato (trovato nei nuovi ordini), non eliminare
+    if (processedItemIds.has(i.id)) return false
+    
+    // Se NON trovato nei nuovi ordini:
+    // Se ha customerId, apparteneva a un ordine non più esistente/modificato -> Elimina
+    if (i.customerId) return true
+    
+    // Se non ha customerId, è un'aggiunta manuale -> Mantieni
+    return false 
+  })
+
+  for (const item of itemsToDelete) {
+    operations.push(db.shoppingListItem.delete({ where: { id: item.id } }))
+  }
+
+  // Esegui tutte le operazioni in transazione
+  if (operations.length > 0) {
+    await db.$transaction(operations)
+  }
+
+  // Ricarica lista aggiornata
+  const updatedList = await db.shoppingList.findUnique({
+    where: { id: list.id },
     include: {
       items: { include: { product: true, supplier: true, customer: true } },
     },
@@ -2304,11 +2454,12 @@ export async function generateShoppingListFromOrders(date: string) {
   await logActivity(session.user.id, "GENERATE_SHOPPING_LIST", "ShoppingList", list.id, {
     date,
     orderCount: orders.length,
-    itemCount: listItems.length,
+    itemCount: updatedList?.items.length ?? 0,
+    updates: operations.length
   })
 
   revalidatePath("/lista-spesa")
-  return serialize(list)
+  return serialize(updatedList)
 }
 
 export async function toggleShoppingListItemMaxiList(itemId: string, isInMaxiList: boolean) {
@@ -2372,6 +2523,35 @@ export async function mergeShoppingListItems(targetItemId: string, sourceItemIds
 
   revalidatePath("/lista-spesa")
   return serialize(updated)
+}
+
+export async function getProductPurchaseHistory(productId: string) {
+  const session = await requireAuth()
+  
+  const history = await db.purchaseOrderItem.findMany({
+    where: { productId },
+    orderBy: { purchaseOrder: { orderDate: 'desc' } },
+    take: 5,
+    include: {
+      purchaseOrder: {
+        select: {
+          orderDate: true,
+          supplier: {
+            select: { companyName: true }
+          }
+        }
+      }
+    }
+  })
+
+  return serialize(history.map(item => ({
+    id: item.id,
+    date: item.purchaseOrder.orderDate,
+    supplierName: item.purchaseOrder.supplier.companyName,
+    quantity: Number(item.quantity),
+    unitPrice: Number(item.unitPrice),
+    unit: item.unit
+  })))
 }
 
 export async function updateShoppingListItem(itemId: string, data: { isOrdered?: boolean; totalQuantity?: number; supplierId?: string | null; supplierPrice?: number | null; notes?: string }) {
