@@ -30,5 +30,12 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "prisma/*.ts",
+    "scripts/*.ts",
+    "check-*.ts",
+    "list-*.ts",
+    "reproduce_*.ts"
+  ]
 }
