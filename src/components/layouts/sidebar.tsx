@@ -15,7 +15,7 @@ import {
   LayoutDashboard, ShoppingCart, ClipboardList, Truck,
   Apple, Building2, Factory, FileText, CreditCard, Calendar,
   TrendingUp, BarChart3, PieChart, Settings, LogOut, ChevronLeft,
-  Menu, Leaf, Warehouse,
+  Menu, Leaf, Warehouse, Shield,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useUIStore } from "@/stores/ui-store"
@@ -108,6 +108,34 @@ export function Sidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-6">
+          {session?.user?.isSuperAdmin && (
+            <div key="master-admin">
+              {!sidebarCollapsed && (
+                <p className="px-3 mb-2 text-xs font-medium text-primary uppercase tracking-wider">
+                  Amministrazione Master
+                </p>
+              )}
+              <div className="space-y-1">
+                <Link
+                  href="/admin-master"
+                  onClick={() => setSidebarOpen(false)}
+                  className={cn(
+                    "relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium",
+                    "transition-all duration-200",
+                    pathname === "/admin-master"
+                      ? "text-primary bg-primary/10 border border-primary/20"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  )}
+                >
+                  <Shield className="relative z-10 h-5 w-5 shrink-0" strokeWidth={1.75} />
+                  {!sidebarCollapsed && (
+                    <span className="relative z-10 truncate">Gestione Tenant SaaS</span>
+                  )}
+                </Link>
+              </div>
+            </div>
+          )}
+
           {SIDEBAR_NAV.map((group) => (
             <div key={group.title}>
               {!sidebarCollapsed && (

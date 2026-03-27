@@ -13,7 +13,7 @@ import { motion } from "framer-motion"
 import {
   Users, ShoppingCart, Package, TrendingUp,
   Activity, ArrowUpRight, ArrowDownRight, Clock,
-  Shield, Settings, FileText,
+  Shield, Settings, FileText, Building2,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -228,12 +228,12 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Quick Links */}
-        <StaggerContainer className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StaggerItem>
             <Link href="/admin/users">
               <motion.div
                 whileHover={{ y: -4, transition: { duration: 0.2 } }}
-                className="flex items-center gap-4 p-5 rounded-2xl border border-border/50 bg-card hover:shadow-[var(--shadow-md)] transition-shadow cursor-pointer"
+                className="flex h-full items-center gap-4 p-5 rounded-2xl border border-border/50 bg-card hover:shadow-[var(--shadow-md)] transition-shadow cursor-pointer"
               >
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
                   <Shield className="h-6 w-6" strokeWidth={1.75} />
@@ -249,7 +249,7 @@ export default function AdminDashboardPage() {
             <Link href="/admin/settings">
               <motion.div
                 whileHover={{ y: -4, transition: { duration: 0.2 } }}
-                className="flex items-center gap-4 p-5 rounded-2xl border border-border/50 bg-card hover:shadow-[var(--shadow-md)] transition-shadow cursor-pointer"
+                className="flex h-full items-center gap-4 p-5 rounded-2xl border border-border/50 bg-card hover:shadow-[var(--shadow-md)] transition-shadow cursor-pointer"
               >
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
                   <Settings className="h-6 w-6" strokeWidth={1.75} />
@@ -265,7 +265,7 @@ export default function AdminDashboardPage() {
             <Link href="/admin/activity">
               <motion.div
                 whileHover={{ y: -4, transition: { duration: 0.2 } }}
-                className="flex items-center gap-4 p-5 rounded-2xl border border-border/50 bg-card hover:shadow-[var(--shadow-md)] transition-shadow cursor-pointer"
+                className="flex h-full items-center gap-4 p-5 rounded-2xl border border-border/50 bg-card hover:shadow-[var(--shadow-md)] transition-shadow cursor-pointer"
               >
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
                   <FileText className="h-6 w-6" strokeWidth={1.75} />
@@ -273,6 +273,27 @@ export default function AdminDashboardPage() {
                 <div>
                   <p className="font-medium text-sm">Log Attivita</p>
                   <p className="text-xs text-muted-foreground">Audit e cronologia</p>
+                </div>
+              </motion.div>
+            </Link>
+          </StaggerItem>
+
+          {/* Special Card for Super Admins */}
+          <StaggerItem>
+            <Link href="/admin-master">
+              <motion.div
+                whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                className="flex h-full items-center gap-4 p-5 rounded-2xl border-2 border-primary/30 bg-primary/5 hover:bg-primary/10 hover:shadow-[var(--shadow-md)] transition-all cursor-pointer"
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+                  <Building2 className="h-6 w-6" strokeWidth={1.75} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <p className="font-bold text-sm text-primary">Master SaaS</p>
+                    <Badge variant="default" className="h-4 px-1 text-[8px] bg-primary group-hover:bg-primary-hover transition-colors">PRO</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Gestione Tenant e DB</p>
                 </div>
               </motion.div>
             </Link>

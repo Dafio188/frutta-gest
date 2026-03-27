@@ -11,7 +11,7 @@
 import { revalidatePath } from "next/cache"
 import { randomUUID } from "crypto"
 import { auth } from "@/lib/auth"
-import { db } from "@/lib/db"
+import { getCurrentDb } from "@/lib/tenant-context"
 import { sendEmail } from "@/lib/email"
 import { getNextNumber } from "@/lib/number-sequence"
 import {
@@ -56,6 +56,7 @@ async function logActivity(
   details?: Record<string, unknown>
 ) {
   try {
+    const db = await getCurrentDb()
     await db.activityLog.create({
       data: { userId, action, entity, entityId, details: details ? JSON.parse(JSON.stringify(details)) : undefined },
     })
@@ -80,6 +81,7 @@ function slugify(text: string): string {
 
 export async function getCustomers(params: PaginationParams = {}) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const {
     page = 1,
@@ -126,6 +128,7 @@ export async function getCustomers(params: PaginationParams = {}) {
 
 export async function getCustomer(id: string) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const customer = await db.customer.findUnique({
     where: { id },
@@ -159,6 +162,7 @@ export async function getCustomer(id: string) {
 
 export async function createCustomer(data: unknown) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
   const parsed = customerSchema.safeParse(data)
   if (!parsed.success) throw new Error(parsed.error.issues.map((e) => e.message).join(", "))
 
@@ -183,6 +187,7 @@ export async function createCustomer(data: unknown) {
 
 export async function updateCustomer(id: string, data: unknown) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
   const parsed = customerSchema.safeParse(data)
   if (!parsed.success) throw new Error(parsed.error.issues.map((e) => e.message).join(", "))
 
@@ -206,6 +211,7 @@ export async function updateCustomer(id: string, data: unknown) {
 
 export async function deleteCustomer(id: string) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   // Verifica che non ci siano ordini o fatture collegati
   const counts = await db.customer.findUnique({
@@ -244,6 +250,7 @@ export async function deleteCustomer(id: string) {
 
 export async function getSuppliers(params: PaginationParams = {}) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const {
     page = 1,
@@ -289,6 +296,7 @@ export async function getSuppliers(params: PaginationParams = {}) {
 
 export async function getSupplier(id: string) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const supplier = await db.supplier.findUnique({
     where: { id },
@@ -314,6 +322,7 @@ export async function getSupplier(id: string) {
 
 export async function createSupplier(data: unknown) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
   const parsed = supplierSchema.safeParse(data)
   if (!parsed.success) throw new Error(parsed.error.issues.map((e) => e.message).join(", "))
 
@@ -337,6 +346,7 @@ export async function createSupplier(data: unknown) {
 
 export async function updateSupplier(id: string, data: unknown) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
   const parsed = supplierSchema.safeParse(data)
   if (!parsed.success) throw new Error(parsed.error.issues.map((e) => e.message).join(", "))
 
@@ -359,6 +369,7 @@ export async function updateSupplier(id: string, data: unknown) {
 
 export async function deleteSupplier(id: string) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const counts = await db.supplier.findUnique({
     where: { id },
@@ -395,6 +406,7 @@ export async function deleteSupplier(id: string) {
 
 export async function getProducts(params: PaginationParams & { categoryId?: string; isAvailable?: boolean } = {}) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const {
     page = 1,
@@ -445,6 +457,7 @@ export async function getProducts(params: PaginationParams & { categoryId?: stri
 
 export async function getProduct(id: string) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const product = await db.product.findUnique({
     where: { id },
@@ -465,6 +478,7 @@ export async function getProduct(id: string) {
 
 export async function getProductsByIds(ids: string[]) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const products = await db.product.findMany({
     where: { id: { in: ids }, isAvailable: true },
@@ -476,6 +490,7 @@ export async function getProductsByIds(ids: string[]) {
 
 export async function createProduct(data: unknown) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
   const parsed = productSchema.safeParse(data)
   if (!parsed.success) throw new Error(parsed.error.issues.map((e) => e.message).join(", "))
 
@@ -507,6 +522,7 @@ export async function createProduct(data: unknown) {
 
 export async function updateProduct(id: string, data: unknown) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
   const parsed = productSchema.safeParse(data)
   if (!parsed.success) throw new Error(parsed.error.issues.map((e) => e.message).join(", "))
 
@@ -533,6 +549,7 @@ export async function updateProduct(id: string, data: unknown) {
 
 export async function deleteProduct(id: string) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const product = await db.product.findUnique({
     where: { id },
@@ -565,6 +582,7 @@ export async function deleteProduct(id: string) {
 
 export async function getCategories() {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const categories = await db.productCategory.findMany({
     orderBy: { sortOrder: "asc" },
@@ -583,6 +601,7 @@ export async function getOrders(
   params: PaginationParams & { status?: string; customerId?: string; dateFrom?: string; dateTo?: string } = {}
 ) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const {
     page = 1,
@@ -645,6 +664,7 @@ export async function getOrders(
 
 export async function getOrder(id: string) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const order = await db.order.findUnique({
     where: { id },
@@ -667,6 +687,7 @@ export async function getOrder(id: string) {
 
 export async function createOrder(data: unknown) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
   const parsed = orderSchema.safeParse(data)
   if (!parsed.success) throw new Error(parsed.error.issues.map((e) => e.message).join(", "))
 
@@ -733,6 +754,7 @@ export async function createOrder(data: unknown) {
 
 export async function updateOrder(id: string, data: unknown) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
   const parsed = orderSchema.safeParse(data)
   if (!parsed.success) throw new Error(parsed.error.issues.map((e) => e.message).join(", "))
 
@@ -823,6 +845,7 @@ export async function updateOrder(id: string, data: unknown) {
 
 export async function updateOrderStatus(id: string, status: string) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   // DELIVERED e INVOICED sono impostati solo automaticamente (DDT e Fattura)
   const validStatuses = ["RECEIVED", "CONFIRMED", "IN_PREPARATION", "CANCELLED"]
@@ -942,6 +965,7 @@ export async function updateOrderStatus(id: string, status: string) {
 
 export async function deleteOrder(id: string) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const order = await db.order.findUnique({
     where: { id },
@@ -1004,6 +1028,7 @@ export async function getDeliveryNotes(
   params: PaginationParams & { status?: string; customerId?: string; dateFrom?: string; dateTo?: string } = {}
 ) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const {
     page = 1,
@@ -1066,6 +1091,7 @@ export async function getDeliveryNotes(
 
 export async function getDeliveryNote(id: string) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const ddt = await db.deliveryNote.findUnique({
     where: { id },
@@ -1089,6 +1115,7 @@ export async function getDeliveryNote(id: string) {
 
 export async function createDeliveryNote(data: unknown) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
   const parsed = deliveryNoteSchema.safeParse(data)
   if (!parsed.success) throw new Error(parsed.error.issues.map((e) => e.message).join(", "))
 
@@ -1184,6 +1211,7 @@ export async function createDeliveryNote(data: unknown) {
 async function lookupProductCostsAndSuppliers(
   productIds: string[]
 ): Promise<Map<string, { costPrice: number; supplierId: string | null }>> {
+  const db = await getCurrentDb()
   const result = new Map<string, { costPrice: number; supplierId: string | null }>()
   if (productIds.length === 0) return result
 
@@ -1245,6 +1273,7 @@ async function lookupProductCostsAndSuppliers(
 
 export async function updateDeliveryNoteStatus(id: string, status: string) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const validStatuses = ["DRAFT", "ISSUED", "DELIVERED"]
   if (!validStatuses.includes(status)) throw new Error("Stato non valido")
@@ -1344,6 +1373,7 @@ export async function updateDeliveryNoteStatus(id: string, status: string) {
 
 export async function generateInvoiceFromDDT(ddtId: string) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const ddt = await db.deliveryNote.findUnique({
     where: { id: ddtId },
@@ -1433,6 +1463,7 @@ export async function generateInvoiceFromDDT(ddtId: string) {
  */
 export async function backfillInvoiceItemCosts() {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const itemsToUpdate = await db.invoiceItem.findMany({
     where: {
@@ -1473,6 +1504,7 @@ export async function backfillInvoiceItemCosts() {
 
 export async function updateDeliveryNote(id: string, data: unknown) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
   const parsed = deliveryNoteSchema.safeParse(data)
   if (!parsed.success) throw new Error(parsed.error.issues.map((e) => e.message).join(", "))
 
@@ -1549,6 +1581,7 @@ export async function updateDeliveryNote(id: string, data: unknown) {
 
 export async function deleteDeliveryNote(id: string) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const ddt = await db.deliveryNote.findUnique({
     where: { id },
@@ -1593,6 +1626,7 @@ export async function getInvoices(
   params: PaginationParams & { status?: string; customerId?: string; dateFrom?: string; dateTo?: string } = {}
 ) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const {
     page = 1,
@@ -1655,6 +1689,7 @@ export async function getInvoices(
 
 export async function getInvoice(id: string) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const invoice = await db.invoice.findUnique({
     where: { id },
@@ -1689,6 +1724,7 @@ export async function getInvoice(id: string) {
 
 export async function createInvoice(data: unknown) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
   const parsed = invoiceSchema.safeParse(data)
   if (!parsed.success) throw new Error(parsed.error.issues.map((e) => e.message).join(", "))
 
@@ -1812,6 +1848,7 @@ export async function createInvoice(data: unknown) {
 
 export async function updateInvoiceStatus(id: string, status: string) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const validStatuses = ["DRAFT", "ISSUED", "SENT", "PAID", "OVERDUE", "CANCELLED"]
   if (!validStatuses.includes(status)) throw new Error("Stato non valido")
@@ -1835,6 +1872,7 @@ export async function updateInvoiceStatus(id: string, status: string) {
 
 export async function deleteInvoice(id: string) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const invoice = await db.invoice.findUnique({
     where: { id },
@@ -1885,6 +1923,7 @@ export async function getPayments(
   params: PaginationParams & { direction?: string; customerId?: string; supplierId?: string; dateFrom?: string; dateTo?: string } = {}
 ) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const {
     page = 1,
@@ -1950,6 +1989,7 @@ export async function getPayments(
 
 export async function createPayment(data: unknown) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
   const parsed = paymentSchema.safeParse(data)
   if (!parsed.success) throw new Error(parsed.error.issues.map((e) => e.message).join(", "))
 
@@ -2031,6 +2071,7 @@ export async function createPayment(data: unknown) {
 
 export async function deletePayment(id: string) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const payment = await db.payment.findUnique({
     where: { id },
@@ -2083,6 +2124,7 @@ export async function deletePayment(id: string) {
 
 export async function getShoppingLists(params: PaginationParams & { status?: string } = {}) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const {
     page = 1,
@@ -2136,6 +2178,7 @@ export async function getShoppingLists(params: PaginationParams & { status?: str
 
 export async function getShoppingList(id: string) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const list = await db.shoppingList.findUnique({
     where: { id },
@@ -2167,6 +2210,7 @@ export async function createShoppingList(data: {
   }[]
 }) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const listDate = new Date(data.date)
 
@@ -2209,6 +2253,7 @@ export async function createShoppingList(data: {
 
 export async function generateShoppingListFromOrders(date: string) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   // Usa la data locale (YYYY-MM-DD)
   const [year, month, day] = date.split("-").map(Number)
@@ -2464,6 +2509,7 @@ export async function generateShoppingListFromOrders(date: string) {
 
 export async function toggleShoppingListItemMaxiList(itemId: string, isInMaxiList: boolean) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
   
   const item = await db.shoppingListItem.update({
     where: { id: itemId },
@@ -2477,6 +2523,7 @@ export async function toggleShoppingListItemMaxiList(itemId: string, isInMaxiLis
 
 export async function bulkToggleMaxiList(itemIds: string[], isInMaxiList: boolean) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const result = await db.shoppingListItem.updateMany({
     where: { id: { in: itemIds } },
@@ -2489,6 +2536,7 @@ export async function bulkToggleMaxiList(itemIds: string[], isInMaxiList: boolea
 
 export async function mergeShoppingListItems(targetItemId: string, sourceItemIds: string[]) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const targetItem = await db.shoppingListItem.findUnique({ where: { id: targetItemId } })
   if (!targetItem) throw new Error("Item target non trovato")
@@ -2527,6 +2575,7 @@ export async function mergeShoppingListItems(targetItemId: string, sourceItemIds
 
 export async function getProductPurchaseHistory(productId: string) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
   
   const history = await db.purchaseOrderItem.findMany({
     where: { productId },
@@ -2556,6 +2605,7 @@ export async function getProductPurchaseHistory(productId: string) {
 
 export async function updateShoppingListItem(itemId: string, data: { isOrdered?: boolean; totalQuantity?: number; supplierId?: string | null; supplierPrice?: number | null; notes?: string }) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const item = await db.shoppingListItem.update({
     where: { id: itemId },
@@ -2574,6 +2624,7 @@ export async function updateShoppingListItem(itemId: string, data: { isOrdered?:
 
 export async function updateShoppingListStatus(id: string, status: string) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const validStatuses = ["DRAFT", "FINALIZED", "ORDERED", "RECEIVED"]
   if (!validStatuses.includes(status)) throw new Error("Stato non valido")
@@ -2593,6 +2644,7 @@ export async function updateShoppingListStatus(id: string, status: string) {
 
 export async function deleteShoppingList(id: string) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   await db.shoppingListItem.deleteMany({ where: { shoppingListId: id } })
   await db.shoppingList.delete({ where: { id } })
@@ -2604,6 +2656,7 @@ export async function deleteShoppingList(id: string) {
 
 export async function createPurchaseOrdersFromShoppingList(shoppingListId: string) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const list = await db.shoppingList.findUnique({
     where: { id: shoppingListId },
@@ -2720,6 +2773,7 @@ export async function getPurchaseOrders(
   params: PaginationParams & { status?: string; supplierId?: string; dateFrom?: string; dateTo?: string } = {}
 ) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const {
     page = 1,
@@ -2780,6 +2834,7 @@ export async function getPurchaseOrders(
 
 export async function getPurchaseOrder(id: string) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const po = await db.purchaseOrder.findUnique({
     where: { id },
@@ -2817,6 +2872,7 @@ export async function getPurchaseOrder(id: string) {
 
 export async function createPurchaseOrder(data: unknown) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
   const parsed = purchaseOrderSchema.safeParse(data)
   if (!parsed.success) throw new Error(parsed.error.issues.map((e) => e.message).join(", "))
 
@@ -2868,6 +2924,7 @@ export async function createPurchaseOrder(data: unknown) {
 
 export async function updatePurchaseOrder(id: string, data: unknown) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
   const parsed = purchaseOrderSchema.safeParse(data)
   if (!parsed.success) throw new Error(parsed.error.issues.map((e) => e.message).join(", "))
 
@@ -2965,6 +3022,7 @@ export async function updatePurchaseOrder(id: string, data: unknown) {
 
 export async function updatePurchaseOrderStatus(id: string, status: string) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const validStatuses = ["DRAFT", "SENT", "RECEIVED", "CANCELLED"]
   if (!validStatuses.includes(status)) throw new Error("Stato non valido")
@@ -3048,6 +3106,7 @@ export async function updatePurchaseOrderStatus(id: string, status: string) {
 
 export async function deletePurchaseOrder(id: string) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const po = await db.purchaseOrder.findUnique({
     where: { id },
@@ -3096,6 +3155,7 @@ export async function getSupplierInvoices(
   params: PaginationParams & { supplierId?: string; isPaid?: string; dateFrom?: string; dateTo?: string } = {}
 ) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const {
     page = 1,
@@ -3155,6 +3215,7 @@ export async function getSupplierInvoices(
 
 export async function getSupplierInvoice(id: string) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const invoice = await db.supplierInvoice.findUnique({
     where: { id },
@@ -3175,6 +3236,7 @@ export async function getSupplierInvoice(id: string) {
 
 export async function createSupplierInvoice(data: unknown) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
   const parsed = supplierInvoiceSchema.safeParse(data)
   if (!parsed.success) throw new Error(parsed.error.issues.map((e) => e.message).join(", "))
 
@@ -3205,6 +3267,7 @@ export async function createSupplierInvoice(data: unknown) {
 
 export async function updateSupplierInvoice(id: string, data: unknown) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
   const parsed = supplierInvoiceSchema.safeParse(data)
   if (!parsed.success) throw new Error(parsed.error.issues.map((e) => e.message).join(", "))
 
@@ -3240,6 +3303,7 @@ export async function updateSupplierInvoice(id: string, data: unknown) {
 
 export async function deleteSupplierInvoice(id: string) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const invoice = await db.supplierInvoice.findUnique({
     where: { id },
@@ -3266,6 +3330,7 @@ export async function deleteSupplierInvoice(id: string) {
 
 export async function getStockSummary(params: PaginationParams = {}) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const {
     page = 1,
@@ -3336,6 +3401,7 @@ export async function getStockMovements(
   params: PaginationParams & { productId?: string; type?: string; dateFrom?: string; dateTo?: string } = {}
 ) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const {
     page = 1,
@@ -3392,6 +3458,7 @@ export async function createStockMovement(data: {
   referenceId?: string | null
 }) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const validTypes = ["CARICO", "SCARICO", "RETTIFICA_POS", "RETTIFICA_NEG", "SCARTO"]
   if (!validTypes.includes(data.type)) throw new Error("Tipo movimento non valido")
@@ -3429,6 +3496,7 @@ export async function createStockMovement(data: {
  */
 export async function getProductWarehouseDetail(productId: string) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const product = await db.product.findUnique({
     where: { id: productId },
@@ -3570,6 +3638,7 @@ export async function bulkCreateStockMovements(items: Array<{
   referenceId?: string | null
 }>) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const movements = await db.$transaction(
     items.map((item) =>
@@ -3603,6 +3672,7 @@ export async function bulkCreateStockMovements(items: Array<{
 
 export async function getMarginReport() {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   // Get all products with sales (invoice items) and purchase costs
   const products = await db.product.findMany({
@@ -3704,6 +3774,7 @@ export async function getMarginReport() {
 
 export async function getDashboardKPIs() {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -3810,6 +3881,7 @@ export async function getDashboardKPIs() {
 
 export async function getSalesChart(days: number = 30) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const startDate = new Date()
   startDate.setDate(startDate.getDate() - days)
@@ -3876,6 +3948,7 @@ export async function getSalesChart(days: number = 30) {
 
 export async function getTopProducts(limit: number = 10) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const startOfMonth = new Date()
   startOfMonth.setDate(1)
@@ -3934,6 +4007,7 @@ export async function getTopProducts(limit: number = 10) {
 
 export async function getTopCustomers(limit: number = 10) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const startOfMonth = new Date()
   startOfMonth.setDate(1)
@@ -3974,6 +4048,7 @@ export async function getTopCustomers(limit: number = 10) {
 
 export async function getRecentActivity(limit: number = 20) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const logs = await db.activityLog.findMany({
     take: limit,
@@ -3993,6 +4068,7 @@ export async function getRecentActivity(limit: number = 20) {
 
 export async function getUsers(params: PaginationParams & { role?: string; isActive?: boolean } = {}) {
   const session = await requireAdmin()
+  const db = await getCurrentDb()
 
   const {
     page = 1,
@@ -4051,6 +4127,7 @@ export async function getUsers(params: PaginationParams & { role?: string; isAct
 
 export async function updateUserRole(id: string, role: string) {
   const session = await requireAdmin()
+  const db = await getCurrentDb()
 
   const validRoles = ["ADMIN", "OPERATOR", "VIEWER"]
   if (!validRoles.includes(role)) throw new Error("Ruolo non valido")
@@ -4077,6 +4154,7 @@ export async function updateUserRole(id: string, role: string) {
 
 export async function toggleUserActive(id: string) {
   const session = await requireAdmin()
+  const db = await getCurrentDb()
 
   // Non permettere all'admin di disattivarsi
   if (id === session.user.id) {
@@ -4104,6 +4182,7 @@ export async function getActivityLogs(
   params: PaginationParams & { userId?: string; action?: string; entity?: string } = {}
 ) {
   const session = await requireAdmin()
+  const db = await getCurrentDb()
 
   const {
     page = 1,
@@ -4158,6 +4237,7 @@ export async function getActivityLogs(
 
 export async function getAppSettings() {
   const session = await requireAdmin()
+  const db = await getCurrentDb()
 
   const settings = await db.appSettings.findMany({
     orderBy: [{ category: "asc" }, { key: "asc" }],
@@ -4167,6 +4247,7 @@ export async function getAppSettings() {
 
 export async function updateAppSetting(key: string, value: unknown) {
   const session = await requireAdmin()
+  const db = await getCurrentDb()
 
   const setting = await db.appSettings.upsert({
     where: { key },
@@ -4189,6 +4270,7 @@ export async function updateAppSetting(key: string, value: unknown) {
 
 export async function getCompanyInfo() {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const info = await db.companyInfo.findFirst()
   return serialize(info)
@@ -4196,6 +4278,7 @@ export async function getCompanyInfo() {
 
 export async function updateCompanyInfo(data: unknown) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
   const parsed = companyInfoSchema.safeParse(data)
   if (!parsed.success) throw new Error(parsed.error.issues.map((e) => e.message).join(", "))
 
@@ -4234,6 +4317,7 @@ export async function updateCompanyInfo(data: unknown) {
 
 export async function getUserPreferences() {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   let prefs = await db.userPreferences.findUnique({
     where: { userId: session.user.id },
@@ -4254,6 +4338,7 @@ export async function updateUserPreferences(data: {
   notifications?: boolean
 }) {
   const session = await requireAuth()
+  const db = await getCurrentDb()
 
   const prefs = await db.userPreferences.upsert({
     where: { userId: session.user.id },
@@ -4283,7 +4368,8 @@ async function requireCustomer() {
   if (session.user.role !== "CUSTOMER" || !session.user.customerId) {
     throw new Error("Accesso riservato ai clienti")
   }
-  return { session, customerId: session.user.customerId }
+  const db = await getCurrentDb()
+  return { session, customerId: session.user.customerId, db }
 }
 
 export async function getPortalDashboard() {
@@ -4718,7 +4804,7 @@ export async function getPortalInvoice(id: string) {
 export async function getPortalPayments(
   params: PaginationParams = {}
 ) {
-  const { customerId } = await requireCustomer()
+  const { db, customerId } = await requireCustomer()
 
   const {
     page = 1,
@@ -4764,6 +4850,7 @@ export async function createCustomerPortalUser(
   password: string
 ) {
   const session = await requireAdmin()
+  const db = await getCurrentDb()
 
   // Verifica che il cliente esista e non abbia gia' un utente portale
   const customer = await db.customer.findUnique({
@@ -4804,6 +4891,7 @@ export async function createCustomerPortalUser(
 
 export async function toggleCustomerPortalAccess(customerId: string, active: boolean) {
   const session = await requireAdmin()
+  const db = await getCurrentDb()
 
   const customer = await db.customer.findUnique({
     where: { id: customerId },
@@ -4827,6 +4915,7 @@ export async function toggleCustomerPortalAccess(customerId: string, active: boo
 
 export async function toggleProductFeatured(productId: string) {
   const session = await requireAdmin()
+  const db = await getCurrentDb()
 
   const product = await db.product.findUnique({ where: { id: productId } })
   if (!product) throw new Error("Prodotto non trovato")
@@ -4853,6 +4942,7 @@ export async function toggleProductFeatured(productId: string) {
 
 export async function scanAndSyncProducts() {
   const session = await requireAuth()
+  const db = await getCurrentDb()
   const fs = await import("fs")
   const path = await import("path")
   const fsPromises = fs.promises
@@ -4991,6 +5081,7 @@ export async function scanAndSyncProducts() {
 
 export async function resetPassword(rawEmail: string) {
   const email = rawEmail.toLowerCase().trim()
+  const db = await getCurrentDb()
   const user = await db.user.findUnique({ where: { email } })
   
   // Return success even if user not found to prevent enumeration
@@ -5044,6 +5135,7 @@ export async function resetPassword(rawEmail: string) {
 }
 
 export async function updatePassword(data: unknown) {
+  const db = await getCurrentDb()
   const parsed = resetPasswordSchema.safeParse(data)
   if (!parsed.success) throw new Error(parsed.error.issues.map((e) => e.message).join(", "))
 

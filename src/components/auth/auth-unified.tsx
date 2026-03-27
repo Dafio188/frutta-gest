@@ -305,8 +305,8 @@ export default function AuthUnified({ initialMode = "login" }: AuthUnifiedProps)
 
 function LoginForm({ callbackUrl, onForgot }: { callbackUrl: string, onForgot: () => void }) {
   const router = useRouter()
-  const [email, setEmail] = useState("admin@fruttagest.com") // Match the mockup image
-  const [password, setPassword] = useState("********")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")

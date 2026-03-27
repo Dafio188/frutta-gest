@@ -25,6 +25,7 @@ import {
   mergeShoppingListItems, bulkToggleMaxiList
 } from "@/lib/actions"
 import { useUIStore } from "@/stores/ui-store"
+import { ShoppingListItemCard } from "@/components/shopping-list/shopping-list-item-card"
 
 const stagger = {
   hidden: { opacity: 0 },
@@ -375,62 +376,6 @@ export default function ListaSpesaPage() {
     return <div className="flex items-center justify-center py-32"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
   }
 
-  const renderItemCard = (item: SpesaItem, isDragOverlay = false) => {
-    const unitLabel = (PRODUCT_UNIT_LABELS[item.unit] || item.unit).toLowerCase()
-    const hasStock = item.availableStock > 0
-    const fullyCovered = item.netQuantity <= 0
-    
-    return (
-      <div className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 rounded-xl border transition-all bg-card ${
-        fullyCovered ? "border-emerald-200 bg-emerald-50/50 dark:border-emerald-900 dark:bg-emerald-950/30" :
-        item.checked ? "border-border/50 bg-muted/50 opacity-60" : "border-border/50 hover:bg-muted/30"
-      } ${isDragOverlay ? "shadow-xl scale-105 cursor-grabbing" : ""}`}>
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          {!isDragOverlay && <Checkbox checked={item.checked} onCheckedChange={() => toggleItem(item.id)} />}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <p className={`text-sm font-medium ${item.checked ? "line-through" : ""}`}>{item.productName}</p>
-              {item.notes && <Badge variant="outline" className="text-[10px] h-4 px-1 truncate max-w-[100px]">{item.notes}</Badge>}
-              {!item.isInMaxiList && <Badge variant="secondary" className="text-[10px] h-4 px-1">Non in Maxi</Badge>}
-            </div>
-            <div className="flex items-center gap-3 mt-0.5 text-xs">
-              <span className="text-muted-foreground">
-                <span className="font-medium text-foreground">{formatNumber(item.totalQuantity)} {unitLabel}</span>
-              </span>
-              {hasStock && (
-                <span className="flex items-center gap-1 text-emerald-600">
-                  <Warehouse className="h-3 w-3" />
-                  Stock: {formatNumber(item.availableStock)}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 ml-9 sm:ml-0">
-          <select
-            value={item.supplierId || ""}
-            onChange={(e) => handleSupplierChange(item.id, e.target.value || null)}
-            className="h-8 px-2 rounded-lg border border-border bg-background text-xs focus:outline-none focus:ring-2 focus:ring-ring/20 max-w-[120px] truncate"
-            onClick={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()} // Prevent drag start on select
-          >
-            <option value="">— Fornitore —</option>
-            {suppliers.map((s) => (
-              <option key={s.id} value={s.id}>{s.companyName}</option>
-            ))}
-          </select>
-          <input
-            type="number" min="0" step="0.5" value={item.totalQuantity}
-            onChange={(e) => handleQtyChange(item.id, parseFloat(e.target.value) || 0)}
-            className="w-16 h-8 px-2 text-right rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring/20"
-            onClick={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()} // Prevent drag start on input
-          />
-        </div>
-      </div>
-    )
-  }
-
   return (
     <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="space-y-6">
@@ -498,27 +443,19 @@ export default function ListaSpesaPage() {
                        </div>
                      </CardTitle>
                    </CardHeader>
-                   <CardContent className="p-0">
-                     <div className="divide-y">
+                   <CardContent className="p-3 space-y-2">
                        {customerItems.map(item => (
-                         <div key={item.id} className="p-3 flex items-center justify-between hover:bg-muted/10">
-                           <div>
-                             <p className="font-medium text-sm">{item.productName}</p>
-                             <p className="text-xs text-muted-foreground">{formatNumber(item.totalQuantity)} {item.unit} {item.notes && `• ${item.notes}`}</p>
-                           </div>
-                           <div className="flex items-center gap-2">
-                             <Button 
-                               variant={item.isInMaxiList ? "secondary" : "outline"} 
-                               size="sm" 
-                               className="h-7 text-xs"
-                               onClick={() => handleToggleMaxi(item.id)}
-                             >
-                               {item.isInMaxiList ? "In Maxi Lista" : "Aggiungi"}
-                             </Button>
-                           </div>
-                         </div>
+                         <ShoppingListItemCard 
+                           key={item.id} 
+                           item={item} 
+                           suppliers={suppliers}
+                           onToggle={toggleItem}
+                           onSupplierChange={handleSupplierChange}
+                           onQtyChange={handleQtyChange}
+                           onToggleMaxi={handleToggleMaxi}
+                           viewMode="client"
+                         />
                        ))}
-                     </div>
                    </CardContent>
                  </Card>
                ))}
@@ -557,7 +494,15 @@ export default function ListaSpesaPage() {
                       {categoryItems.map((item) => (
                         <DroppableSpesaItem key={item.id} item={item} onDrop={(sourceId) => console.log('drop', sourceId)}>
                           <DraggableSpesaItem item={item}>
-                            {renderItemCard(item)}
+                            <ShoppingListItemCard 
+                              item={item} 
+                              suppliers={suppliers}
+                              onToggle={toggleItem}
+                              onSupplierChange={handleSupplierChange}
+                              onQtyChange={handleQtyChange}
+                              onToggleMaxi={handleToggleMaxi}
+                              viewMode="maxi"
+                            />
                           </DraggableSpesaItem>
                         </DroppableSpesaItem>
                       ))}
@@ -573,7 +518,18 @@ export default function ListaSpesaPage() {
         )}
       </div>
       <DragOverlay>
-        {draggedItem ? renderItemCard(draggedItem, true) : null}
+        {draggedItem ? (
+          <ShoppingListItemCard 
+            item={draggedItem} 
+            suppliers={suppliers}
+            onToggle={() => {}}
+            onSupplierChange={() => {}}
+            onQtyChange={() => {}}
+            onToggleMaxi={() => {}}
+            isDragOverlay
+            viewMode="maxi"
+          />
+        ) : null}
       </DragOverlay>
     </DndContext>
   )
