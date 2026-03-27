@@ -1,88 +1,54 @@
-/**
- * Proxy di Protezione Route (Next.js 16)
- *
- * Sostituisce il vecchio middleware.ts.
- * Gira su Node.js runtime (supporta crypto, bcrypt, Prisma).
- */
-
-import { auth } from "@/lib/auth"
+import NextAuth from "next-auth"
+import { authConfig } from "@/lib/auth.config"
 import { NextResponse } from "next/server"
 
-const publicRoutes = ["/", "/login", "/register", "/forgot-password"]
-const adminRoutes = ["/admin"]
-const customerRoutes = ["/portale"]
-const staffRoutes = [
-  "/dashboard", "/ordini", "/bolle", "/catalogo", "/clienti",
-  "/fornitori", "/fatture", "/finanza", "/lista-spesa", "/acquisti",
-  "/magazzino", "/report", "/settings",
-]
+const { auth } = NextAuth(authConfig)
 
-export async function proxy(request: Request) {
-  const url = new URL(request.url)
+export default auth(async (req) => {
+  const url = new URL(req.url)
   const pathname = url.pathname
+  const hostname = req.headers.get('host') || '';
 
-  // Skip static assets and API auth routes
-  if (
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/api/auth") ||
-    pathname.includes(".") ||
-    pathname.startsWith("/favicon.ico") ||
-    pathname.startsWith("/images") ||
-    pathname.startsWith("/fonts") ||
-    pathname.startsWith("/icons")
-  ) {
-    return NextResponse.next()
+  // 1. Identificazione Tenant
+  let tenant = '';
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'fruttagest.it';
+  
+  if (hostname === 'localhost:3650' || hostname === '127.0.0.1:3650') {
+    tenant = req.nextUrl.searchParams.get('tenant') || 'fruttagest';
+  } else if (hostname.endsWith(`.${rootDomain}`)) {
+    tenant = hostname.replace(`.${rootDomain}`, '');
+  } else if (hostname === rootDomain) {
+    tenant = 'master';
+  } else {
+    tenant = hostname; 
   }
 
-  const session = await auth()
-  const isLoggedIn = !!session?.user
-  const role = session?.user?.role
-
-  // Public routes — redirect if already logged in
-  if (publicRoutes.some((r) => pathname === r) && isLoggedIn) {
-    if (["/login", "/register"].includes(pathname)) {
-      const dest = role === "CUSTOMER" ? "/portale" : "/dashboard"
-      return NextResponse.redirect(new URL(dest, request.url))
+  // 2. Protezione SuperAdmin (Global Master)
+  if (pathname.startsWith("/admin-master")) {
+    const isLoggedIn = !!req.auth?.user
+    const isSuperAdmin = req.auth?.user?.email === process.env.SUPER_ADMIN_EMAIL
+    
+    if (!isLoggedIn) {
+      const loginUrl = new URL("/login", req.url)
+      loginUrl.searchParams.set("callbackUrl", pathname)
+      return NextResponse.redirect(loginUrl)
     }
-    return NextResponse.next()
-  }
-
-  // Not logged in — redirect to login (except public & API)
-  const isPublic = publicRoutes.some((r) => pathname === r)
-  const isApiRoute = pathname.startsWith("/api")
-
-  if (!isPublic && !isApiRoute && !isLoggedIn) {
-    const loginUrl = new URL("/login", request.url)
-    loginUrl.searchParams.set("callbackUrl", pathname)
-    return NextResponse.redirect(loginUrl)
-  }
-
-  if (!isLoggedIn) return NextResponse.next()
-
-  // Le route admin richiedono ruolo ADMIN
-  if (adminRoutes.some((r) => pathname.startsWith(r))) {
-    if (role !== "ADMIN") {
-      const dest = role === "CUSTOMER" ? "/portale" : "/dashboard"
-      return NextResponse.redirect(new URL(dest, request.url))
+    
+    if (!isSuperAdmin) {
+      return NextResponse.redirect(new URL("/dashboard", req.url))
     }
   }
 
-  // CUSTOMER non puo accedere alle route staff
-  if (role === "CUSTOMER") {
-    if (staffRoutes.some((r) => pathname.startsWith(r))) {
-      return NextResponse.redirect(new URL("/portale", request.url))
-    }
-  }
+  // 3. Iniezione Header Tenant
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set('X-Tenant-Slug', tenant);
 
-  // Staff non puo accedere alle route customer
-  if (role !== "CUSTOMER") {
-    if (customerRoutes.some((r) => pathname.startsWith(r))) {
-      return NextResponse.redirect(new URL("/dashboard", request.url))
-    }
-  }
-
-  return NextResponse.next()
-}
+  return NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
+})
 
 export const config = {
   matcher: [
