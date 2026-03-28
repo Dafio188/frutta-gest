@@ -63,26 +63,42 @@ export function Sidebar() {
         <div className="flex h-24 items-center justify-between px-4 border-b border-border/50">
           {!sidebarCollapsed && (
             <Link href="/dashboard" className="flex items-center">
-              <Image
-                src="/LOGO.png"
-                alt="FruttaGest"
-                width={360}
-                height={120}
-                priority
-                className="h-20 w-auto"
-              />
+              {session?.user?.logoUrl ? (
+                <img
+                  src={session.user.logoUrl}
+                  alt="Gest"
+                  className="h-12 w-auto object-contain max-w-[200px]"
+                />
+              ) : (
+                <Image
+                  src="/LOGO.png"
+                  alt="FruttaGest"
+                  width={360}
+                  height={120}
+                  priority
+                  className="h-20 w-auto"
+                />
+              )}
             </Link>
           )}
           {sidebarCollapsed && (
-            <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-              <Image
-                src="/LOGO.png"
-                alt="FruttaGest"
-                width={36}
-                height={36}
-                priority
-                className="h-7 w-auto"
-              />
+            <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-lg bg-primary overflow-hidden">
+              {session?.user?.logoUrl ? (
+                <img
+                  src={session.user.logoUrl}
+                  alt="Gest"
+                  className="h-8 w-auto object-contain bg-white/10"
+                />
+              ) : (
+                <Image
+                  src="/LOGO.png"
+                  alt="FruttaGest"
+                  width={36}
+                  height={36}
+                  priority
+                  className="h-7 w-auto"
+                />
+              )}
             </div>
           )}
           <button

@@ -18,6 +18,8 @@ model Organization {
   logoUrl       String?
   dbUrl         String
   isActive      Boolean  @default(true)
+  primaryColor  String?  @default("#3b82f6")
+  theme         String?  @default("dark")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   

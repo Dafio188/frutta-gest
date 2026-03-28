@@ -43,11 +43,12 @@ export async function toggleOrganizationStatus(id: string, isActive: boolean) {
   return org
 }
 
-export async function updateOrganization(id: string, data: { name?: string; dbUrl?: string }) {
+export async function updateOrganization(id: string, data: { name?: string; dbUrl?: string; logoUrl?: string | null; primaryColor?: string | null }) {
   await requireSuperAdmin()
   const org = await masterDb.organization.update({
     where: { id },
     data,
+
   })
   revalidatePath("/admin-master")
   return org

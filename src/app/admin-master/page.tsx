@@ -25,6 +25,9 @@ import {
 import { toast, Toaster } from "sonner"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
+import { UploadButton } from "@/utils/uploadthing"
+import "@uploadthing/react/styles.css"
+import { updateOrganization } from "@/lib/actions-master"
 
 export default function SuperAdminPage() {
   const [orgs, setOrgs] = useState<any[]>([])
@@ -32,6 +35,8 @@ export default function SuperAdminPage() {
   const [search, setSearch] = useState("")
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [newOrg, setNewOrg] = useState({ name: "", slug: "", dbUrl: "" })
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [editingOrg, setEditingOrg] = useState<any>(null)
 
   useEffect(() => {
     loadOrgs()
@@ -137,7 +142,7 @@ export default function SuperAdminPage() {
                   <div className={`p-3 rounded-2xl ${org.isActive ? 'bg-blue-500/10 text-blue-400' : 'bg-red-500/10 text-red-400'}`}>
                     <Building2 size={24} />
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 relative z-10">
                     <button 
                       onClick={() => handleToggle(org.id, org.isActive)}
                       className={`p-2 rounded-xl transition-all ${
@@ -164,9 +169,17 @@ export default function SuperAdminPage() {
                     >
                       <Database size={18} />
                     </button>
-                    <div className="p-2 rounded-xl bg-zinc-800/50 text-zinc-400">
+                    <button 
+                      onClick={() => {
+                        console.log("Apertura per", org.name)
+                        setEditingOrg(org)
+                        setIsSettingsOpen(true)
+                      }}
+                      className="p-2 rounded-xl bg-zinc-800/50 text-zinc-400 hover:bg-zinc-700 hover:text-white transition-all cursor-pointer relative z-20"
+                      title="Impostazioni Branding"
+                    >
                       <Settings size={18} />
-                    </div>
+                    </button>
                   </div>
                 </div>
 
@@ -200,7 +213,7 @@ export default function SuperAdminPage() {
                 </div>
 
                 {org.isActive && (
-                  <div className="absolute top-4 right-4 animate-pulse">
+                  <div className="absolute top-4 right-4 animate-pulse pointer-events-none z-0">
                     <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_10px_#3b82f6]" />
                   </div>
                 )}
@@ -288,6 +301,110 @@ export default function SuperAdminPage() {
                     className="flex-3 px-10 py-4 rounded-2xl bg-blue-600 font-bold hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2"
                   >
                     Crea Tenant <ArrowRight size={18} />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Impostazioni Branding */}
+      <AnimatePresence>
+        {isSettingsOpen && editingOrg && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsSettingsOpen(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-md"
+            />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative bg-zinc-900 rounded-[32px] border border-zinc-800 p-8 w-full max-w-xl shadow-2xl"
+            >
+              <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
+                <Settings className="text-white" />
+                Branding Tenant: {editingOrg.name}
+              </h2>
+              
+              <div className="space-y-6">
+                <div>
+                  <label className="text-xs uppercase font-bold text-zinc-500 mb-2 block">Logo Aziendale</label>
+                  {editingOrg.logoUrl ? (
+                    <div className="mb-4">
+                      <img src={editingOrg.logoUrl} alt="Logo" className="h-16 object-contain rounded-lg bg-white/5 p-2" />
+                      <button 
+                         onClick={() => setEditingOrg({...editingOrg, logoUrl: null})}
+                         className="text-red-400 text-sm mt-2 font-bold"
+                      >
+                         Rimuovi Logo
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="bg-black border border-zinc-800 rounded-xl p-4 flex justify-center border-dashed">
+                      <UploadButton
+                        endpoint="tenantLogoUploader"
+                        onClientUploadComplete={(res) => {
+                          if (res?.[0]) {
+                            setEditingOrg({...editingOrg, logoUrl: res[0].url})
+                            toast.success("Logo caricato!")
+                          }
+                        }}
+                        onUploadError={(error: Error) => {
+                          toast.error(`Errore caricamento: ${error.message}`)
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="text-xs uppercase font-bold text-zinc-500 mb-2 block">Colore Principale (Hex)</label>
+                  <div className="flex gap-4 items-center">
+                    <input 
+                      type="color"
+                      value={editingOrg.primaryColor || "#3b82f6"}
+                      onChange={e => setEditingOrg({...editingOrg, primaryColor: e.target.value})}
+                      className="w-12 h-12 rounded cursor-pointer bg-black border border-zinc-800 p-1"
+                    />
+                    <input 
+                      type="text"
+                      value={editingOrg.primaryColor || "#3b82f6"}
+                      onChange={e => setEditingOrg({...editingOrg, primaryColor: e.target.value})}
+                      className="flex-1 bg-black border border-zinc-800 rounded-xl px-4 py-3 focus:border-blue-500 outline-none font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-4 flex gap-3">
+                  <button 
+                    onClick={() => setIsSettingsOpen(false)}
+                    className="flex-1 px-6 py-4 rounded-2xl bg-zinc-800 font-bold hover:bg-zinc-700 transition-all text-zinc-300"
+                  >
+                    Annulla
+                  </button>
+                  <button 
+                    onClick={async () => {
+                      const t = toast.loading("Salvataggio...")
+                      try {
+                        await updateOrganization(editingOrg.id, { 
+                          logoUrl: editingOrg.logoUrl,
+                          primaryColor: editingOrg.primaryColor
+                        })
+                        toast.success("Impostazioni salvate!", { id: t })
+                        setIsSettingsOpen(false)
+                        loadOrgs()
+                      } catch (err) {
+                        toast.error("Errore salvataggio", { id: t })
+                      }
+                    }}
+                    className="flex-3 px-10 py-4 rounded-2xl bg-white text-black font-bold hover:bg-zinc-200 transition-all"
+                  >
+                    Salva Modifiche
                   </button>
                 </div>
               </div>

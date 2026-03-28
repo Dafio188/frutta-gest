@@ -20,6 +20,8 @@ declare module "next-auth" {
       customerId?: string | null
       tenantSlug: string
       isSuperAdmin: boolean
+      logoUrl?: string | null
+      primaryColor?: string | null
     }
   }
 
@@ -35,6 +37,8 @@ declare module "@auth/core/jwt" {
     customerId?: string | null
     tenantSlug: string
     isSuperAdmin: boolean
+    logoUrl?: string | null
+    primaryColor?: string | null
   }
 }
 
@@ -123,6 +127,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.customerId = (token.customerId as string | null) ?? null
         session.user.tenantSlug = token.tenantSlug
         session.user.isSuperAdmin = !!token.isSuperAdmin
+        session.user.logoUrl = token.logoUrl
+        session.user.primaryColor = token.primaryColor
       }
       return session
     },
@@ -133,6 +139,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const { getTenantSlug } = await import("@/lib/tenant-context")
         token.tenantSlug = await getTenantSlug()
         token.isSuperAdmin = user.email?.toLowerCase() === process.env.SUPER_ADMIN_EMAIL?.toLowerCase()
+        
+        // Carica il branding dal Master DB
+        if (token.tenantSlug && token.tenantSlug !== 'master') {
+          const { masterDb } = await import("@/lib/master-db")
+          const org = await masterDb.organization.findUnique({ where: { slug: token.tenantSlug } }) as any
+          if (org) {
+            token.logoUrl = org.logoUrl
+            token.primaryColor = org.primaryColor
+          }
+        }
+
       }
       return token
     },

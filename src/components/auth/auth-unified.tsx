@@ -16,9 +16,10 @@ import { cn } from "@/lib/utils"
 
 interface AuthUnifiedProps {
   initialMode?: "login" | "register" | "forgot"
+  tenantLogo?: string | null
 }
 
-export default function AuthUnified({ initialMode = "login" }: AuthUnifiedProps) {
+export default function AuthUnified({ initialMode = "login", tenantLogo }: AuthUnifiedProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard"
@@ -89,14 +90,23 @@ export default function AuthUnified({ initialMode = "login" }: AuthUnifiedProps)
                   className="space-y-2 flex flex-col items-center"
                 >
                   <div className="flex items-center justify-center transition-all drop-shadow-[0_20px_20px_rgba(0,0,0,0.4)]">
-                     <Image 
-                       src="/LOGO.png" 
-                       alt="Logo" 
-                       width={320} 
-                       height={120} 
-                       className="object-contain"
-                       style={{ filter: "url(#white-to-transparent)" }}
-                     />
+                     {tenantLogo ? (
+                       <img 
+                         src={tenantLogo} 
+                         alt="Logo Cliente" 
+                         className="h-24 w-auto object-contain max-w-[300px]"
+                         style={{ filter: "drop-shadow(0 10px 10px rgba(0,0,0,0.5))" }}
+                       />
+                     ) : (
+                       <Image 
+                         src="/LOGO.png" 
+                         alt="Logo" 
+                         width={320} 
+                         height={120} 
+                         className="object-contain"
+                         style={{ filter: "url(#white-to-transparent)" }}
+                       />
+                     )}
                   </div>
                   <motion.div
                      initial={{ opacity: 0, y: 20 }}
@@ -141,14 +151,23 @@ export default function AuthUnified({ initialMode = "login" }: AuthUnifiedProps)
                   className="space-y-2 flex flex-col items-center"
                 >
                   <div className="flex items-center justify-center transition-all drop-shadow-[0_20px_20px_rgba(0,0,0,0.4)]">
-                     <Image 
-                       src="/LOGO.png" 
-                       alt="Logo" 
-                       width={320} 
-                       height={120} 
-                       className="object-contain"
-                       style={{ filter: "url(#white-to-transparent)" }}
-                     />
+                     {tenantLogo ? (
+                       <img 
+                         src={tenantLogo} 
+                         alt="Logo Cliente" 
+                         className="h-24 w-auto object-contain max-w-[300px]"
+                         style={{ filter: "drop-shadow(0 10px 10px rgba(0,0,0,0.5))" }}
+                       />
+                     ) : (
+                       <Image 
+                         src="/LOGO.png" 
+                         alt="Logo" 
+                         width={320} 
+                         height={120} 
+                         className="object-contain"
+                         style={{ filter: "url(#white-to-transparent)" }}
+                       />
+                     )}
                   </div>
                   <motion.div
                      initial={{ opacity: 0, y: 20 }}
@@ -237,7 +256,11 @@ export default function AuthUnified({ initialMode = "login" }: AuthUnifiedProps)
                        whileHover={{ scale: 1.05 }}
                        className="flex justify-center md:justify-start mb-6 drop-shadow-sm cursor-default transition-all"
                      >
-                       <Image src="/LOGO.png" alt="Logo" width={180} height={70} className="h-10 w-auto mix-blend-multiply" />
+                       {tenantLogo ? (
+                         <img src={tenantLogo} alt="Logo" className="h-10 w-auto object-contain" />
+                       ) : (
+                         <Image src="/LOGO.png" alt="Logo" width={180} height={70} className="h-10 w-auto mix-blend-multiply" />
+                       )}
                      </motion.div>
                      <h1 className="text-3xl font-bold tracking-tight">Bentornato</h1>
                      <p className="text-muted-foreground mt-1">Accedi per gestire la tua filieria.</p>
@@ -257,7 +280,11 @@ export default function AuthUnified({ initialMode = "login" }: AuthUnifiedProps)
                        whileHover={{ scale: 1.05 }}
                        className="flex justify-center md:justify-start mb-6 drop-shadow-sm cursor-default transition-all"
                      >
-                       <Image src="/LOGO.png" alt="Logo" width={180} height={70} className="h-10 w-auto mix-blend-multiply" />
+                       {tenantLogo ? (
+                         <img src={tenantLogo} alt="Logo" className="h-10 w-auto object-contain" />
+                       ) : (
+                         <Image src="/LOGO.png" alt="Logo" width={180} height={70} className="h-10 w-auto mix-blend-multiply" />
+                       )}
                      </motion.div>
                      <h1 className="text-3xl font-bold tracking-tight">Recupero</h1>
                      <p className="text-muted-foreground mt-1">Reimposta la tua password in pochi passi.</p>
@@ -286,7 +313,11 @@ export default function AuthUnified({ initialMode = "login" }: AuthUnifiedProps)
                  whileHover={{ scale: 1.05 }}
                  className="mb-6 drop-shadow-sm cursor-default transition-all"
                >
-                 <Image src="/LOGO.png" alt="Logo" width={180} height={70} className="h-10 w-auto mix-blend-multiply" />
+                 {tenantLogo ? (
+                   <img src={tenantLogo} alt="Logo" className="h-10 w-auto object-contain" />
+                 ) : (
+                   <Image src="/LOGO.png" alt="Logo" width={180} height={70} className="h-10 w-auto mix-blend-multiply" />
+                 )}
                </motion.div>
                <h1 className="text-3xl font-bold tracking-tight">Crea un account</h1>
                <p className="text-muted-foreground mt-1">Unisciti alla rete FruttaGest.</p>
