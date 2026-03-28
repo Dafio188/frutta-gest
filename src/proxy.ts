@@ -14,7 +14,16 @@ export default auth(async (req) => {
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'fruttagest.it';
   
   if (hostname === 'localhost:3650' || hostname === '127.0.0.1:3650') {
-    tenant = req.nextUrl.searchParams.get('tenant') || 'fruttagest';
+    let t = req.nextUrl.searchParams.get('tenant');
+    if (!t) {
+      const referer = req.headers.get('referer');
+      if (referer) {
+        try {
+          t = new URL(referer).searchParams.get('tenant');
+        } catch(e) {}
+      }
+    }
+    tenant = t || 'master';
   } else if (hostname.endsWith(`.${rootDomain}`)) {
     tenant = hostname.replace(`.${rootDomain}`, '');
   } else if (hostname === rootDomain) {
@@ -52,6 +61,6 @@ export default auth(async (req) => {
 
 export const config = {
   matcher: [
-    "/((?!api/auth|_next/static|_next/image|favicon.ico|images|fonts|icons|privacy|terms|contact).*)",
+    "/((?!_next/static|_next/image|favicon.ico|images|fonts|icons|privacy|terms|contact).*)",
   ],
 }

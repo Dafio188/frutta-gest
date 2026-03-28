@@ -88,9 +88,13 @@ export async function initializeTenantDatabase(orgId: string) {
     // 2. Creazione Utente Admin di default nel nuovo DB
     // Importiamo dinamicamente il client del tenant (o usiamo un client temporaneo)
     const { PrismaClient } = await import("@prisma/client")
-    const tenantDb = new PrismaClient({ 
-      datasources: { db: { url: org.dbUrl } }
-    } as any)
+    const pgModule = await import("pg")
+    const { PrismaPg } = await import("@prisma/adapter-pg")
+
+    const pg = pgModule.default || pgModule
+    const pool = new pg.Pool({ connectionString: org.dbUrl })
+    const adapter = new PrismaPg(pool as any)
+    const tenantDb = new PrismaClient({ adapter } as any)
     
     const adminPassword = await bcrypt.hash("admin123", 10)
     
