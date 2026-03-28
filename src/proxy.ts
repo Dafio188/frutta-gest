@@ -39,12 +39,15 @@ export default auth(async (req) => {
     
     if (!isLoggedIn) {
       const loginUrl = new URL("/login", req.url)
+      loginUrl.host = req.headers.get("host") || loginUrl.host // FIX DOMINIO CUSTOM
       loginUrl.searchParams.set("callbackUrl", pathname)
       return NextResponse.redirect(loginUrl)
     }
     
     if (!isSuperAdmin) {
-      return NextResponse.redirect(new URL("/dashboard", req.url))
+      const dashUrl = new URL("/dashboard", req.url)
+      dashUrl.host = req.headers.get("host") || dashUrl.host // FIX DOMINIO CUSTOM
+      return NextResponse.redirect(dashUrl)
     }
   }
 

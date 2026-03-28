@@ -19,6 +19,14 @@ export const authConfig = {
         if (isLoggedIn && auth?.user?.email?.toLowerCase() === process.env.SUPER_ADMIN_EMAIL?.toLowerCase()) return true
         return false // Redirect to login
       }
+
+      // Proteggi dashboard e amministrazione
+      const isPrivateRoute = nextUrl.pathname.startsWith("/dashboard") || nextUrl.pathname.startsWith("/admin") || nextUrl.pathname.startsWith("/settings");
+      
+      if (isPrivateRoute) {
+        if (isLoggedIn) return true;
+        return false; // Reindirizza a /login
+      }
       
       return true
     },
