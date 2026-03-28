@@ -38,8 +38,8 @@ export async function GET(request: Request) {
       },
     });
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       message: `Password per ${superAdminEmail} resettata con successo.`,
       new_password: newPassword,
       instructions: 'Accedi ora e poi chiedimi di rimuovere questo file di debug.'

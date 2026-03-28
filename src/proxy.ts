@@ -26,7 +26,7 @@ export default auth(async (req) => {
   // 2. Protezione SuperAdmin (Global Master)
   if (pathname.startsWith("/admin-master")) {
     const isLoggedIn = !!req.auth?.user
-    const isSuperAdmin = req.auth?.user?.email === process.env.SUPER_ADMIN_EMAIL
+    const isSuperAdmin = req.auth?.user?.email?.toLowerCase() === process.env.SUPER_ADMIN_EMAIL?.toLowerCase()
     
     if (!isLoggedIn) {
       const loginUrl = new URL("/login", req.url)

@@ -16,7 +16,7 @@ export const authConfig = {
       const isOnDashboard = nextUrl.pathname.startsWith("/dashboard")
       
       if (isOnAdminMaster) {
-        if (isLoggedIn && auth?.user?.email === process.env.SUPER_ADMIN_EMAIL) return true
+        if (isLoggedIn && auth?.user?.email?.toLowerCase() === process.env.SUPER_ADMIN_EMAIL?.toLowerCase()) return true
         return false // Redirect to login
       }
       

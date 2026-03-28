@@ -132,7 +132,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.customerId = user.customerId ?? null
         const { getTenantSlug } = await import("@/lib/tenant-context")
         token.tenantSlug = await getTenantSlug()
-        token.isSuperAdmin = user.email === process.env.SUPER_ADMIN_EMAIL
+        token.isSuperAdmin = user.email?.toLowerCase() === process.env.SUPER_ADMIN_EMAIL?.toLowerCase()
       }
       return token
     },
