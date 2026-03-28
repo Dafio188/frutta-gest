@@ -2,8 +2,6 @@
  * Pagina Login — Unified Sliding Design
  */
 
-"use client"
-
 import { Suspense } from "react"
 import AuthUnified from "@/components/auth/auth-unified"
 import { getCurrentOrganization } from "@/lib/tenant-context"

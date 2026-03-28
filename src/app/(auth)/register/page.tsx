@@ -2,8 +2,6 @@
  * Pagina Registrazione — Unified Sliding Design
  */
 
-"use client"
-
 import { Suspense } from "react"
 import AuthUnified from "@/components/auth/auth-unified"
 
