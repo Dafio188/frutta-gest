@@ -4,11 +4,18 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
 import bcrypt from 'bcryptjs';
 
-const masterPool = new pg.Pool({ connectionString: process.env.MASTER_DATABASE_URL });
-const masterAdapter = new PrismaPg(masterPool as any);
-const masterDb = new MasterClient({ adapter: masterAdapter });
-
 export async function GET(request: Request) {
+  if (!process.env.MASTER_DATABASE_URL) {
+    return NextResponse.json({ 
+      error: 'Variabile MASTER_DATABASE_URL mancante su Vercel!',
+      tip: 'Vai su Vercel -> Settings -> Environment Variables e aggiungila.' 
+    }, { status: 500 });
+  }
+
+  const masterPool = new pg.Pool({ connectionString: process.env.MASTER_DATABASE_URL });
+  const masterAdapter = new PrismaPg(masterPool as any);
+  const masterDb = new MasterClient({ adapter: masterAdapter });
+
   const { searchParams } = new URL(request.url);
   const secret = searchParams.get('secret');
 
