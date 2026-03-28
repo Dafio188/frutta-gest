@@ -92,7 +92,16 @@ export async function initializeTenantDatabase(orgId: string) {
     const { PrismaPg } = await import("@prisma/adapter-pg")
 
     const pg = pgModule.default || pgModule
+    
+    // FONDAMENTALE FORZARE LA RICERCA SULLO SCHEMA CORRETTO:
+    const schemaMatch = org.dbUrl.match(/schema=([^&]+)/);
+    const schemaName = schemaMatch ? schemaMatch[1] : org.slug;
+
     const pool = new pg.Pool({ connectionString: org.dbUrl })
+    pool.on('connect', (client: any) => {
+      client.query(`SET search_path TO "${schemaName}"`);
+    });
+
     const adapter = new PrismaPg(pool as any)
     const tenantDb = new PrismaClient({ adapter } as any)
     

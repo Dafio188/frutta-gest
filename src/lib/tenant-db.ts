@@ -22,17 +22,26 @@ class TenantDbManager {
 
     const organization = await masterDb.organization.findUnique({
       where: { id: organizationId },
-      select: { dbUrl: true, isActive: true },
+      select: { dbUrl: true, isActive: true, slug: true },
     });
 
     if (!organization || !organization.isActive) {
       throw new Error(`Organizzazione non trovata o non attiva: ${organizationId}`);
     }
 
-    // Qui implementeremo la decifrazione della dbUrl per sicurezza in futuro
+    // Estraiamo il nome dello schema dalla dbUrl
     const dbUrl = organization.dbUrl;
+    const schemaMatch = dbUrl.match(/schema=([^&]+)/);
+    const schemaName = schemaMatch ? schemaMatch[1] : organization.slug;
 
     const pool = new pg.Pool({ connectionString: dbUrl });
+    
+    // FONDAMENTALE FORZARE LA RICERCA SULLO SCHEMA CORRETTO:
+    // pg.Pool ignora nativamente il parametro ?schema= della URL!
+    pool.on('connect', (client) => {
+      client.query(`SET search_path TO "${schemaName}"`);
+    });
+
     const adapter = new PrismaPg(pool as any);
 
     const client = new PrismaClient({
