@@ -52,14 +52,16 @@ export async function GET(
     vatAmount: Number(invoice.vatAmount),
     total: Number(invoice.total),
     paidAmount: Number(invoice.paidAmount),
-    items: invoice.items.map((item) => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    items: invoice.items.map((item: any) => ({
       ...item,
       quantity: Number(item.quantity),
       unitPrice: Number(item.unitPrice),
       vatRate: Number(item.vatRate),
       lineTotal: Number(item.lineTotal),
     })),
-    ddtNumbers: invoice.ddtLinks.map((l) => l.deliveryNote.ddtNumber),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ddtNumbers: invoice.ddtLinks.map((l: any) => l.deliveryNote.ddtNumber),
   }
 
   const pdfElement = React.createElement(InvoicePdfDocument, { invoice: invoiceData, company })

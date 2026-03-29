@@ -109,7 +109,8 @@ async function getProductCatalogNames(db: any): Promise<string[]> {
     select: { name: true },
     orderBy: { name: "asc" },
   })
-  return products.map((p) => p.name)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return products.map((p: any) => p.name)
 }
 
 async function matchProductsToIds(
@@ -125,14 +126,16 @@ async function matchProductsToIds(
     const normalizedName = item.productName.toLowerCase().trim()
 
     // Exact match first
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let match = allProducts.find(
-      (p) => p.name.toLowerCase() === normalizedName
+      (p: any) => p.name.toLowerCase() === normalizedName
     )
 
     // Partial match
     if (!match) {
       match = allProducts.find(
-        (p) =>
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (p: any) =>
           p.name.toLowerCase().includes(normalizedName) ||
           normalizedName.includes(p.name.toLowerCase())
       )

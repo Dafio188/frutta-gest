@@ -47,7 +47,8 @@ export async function GET(
     ...ddt,
     weight: ddt.weight ? Number(ddt.weight) : null,
     numberOfPackages: ddt.numberOfPackages ? Number(ddt.numberOfPackages) : null,
-    items: ddt.items.map((item) => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    items: ddt.items.map((item: any) => ({
       ...item,
       quantity: Number(item.quantity),
       unitPrice: Number(item.unitPrice),

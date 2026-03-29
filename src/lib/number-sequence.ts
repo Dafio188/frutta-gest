@@ -29,7 +29,8 @@ export async function getNextNumber(type: SequenceType): Promise<string> {
   const prefix = PREFIXES[type]
   const sequenceKey = `${type}_${year}`
 
-  const result = await db.$transaction(async (tx) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const result = await db.$transaction(async (tx: any) => {
     const sequence = await tx.numberSequence.upsert({
       where: {
         type_year: {
