@@ -89,3 +89,52 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json({ user })
 }
 
+export async function DELETE(req: NextRequest) {
+  const session = await auth()
+  const db = await getCurrentDb()
+
+  if (!session?.user || session.user.role !== "ADMIN") {
+    return NextResponse.json({ error: "Non autorizzato" }, { status: 403 })
+  }
+
+  const { userId } = await req.json()
+
+  if (typeof userId !== "string" || !userId) {
+    return NextResponse.json({ error: "ID utente non valido" }, { status: 400 })
+  }
+
+  if (userId === session.user.id) {
+    return NextResponse.json(
+      { error: "Non puoi eliminare il tuo account" },
+      { status: 400 }
+    )
+  }
+
+  // Controlla integrità contabile: ordini, fatture, DDT
+  const [orderCount, invoiceCount, ddtCount] = await Promise.all([
+    db.order.count({ where: { createdById: userId } }),
+    db.invoice.count({ where: { userId } }),
+    db.deliveryNote.count({ where: { userId } }),
+  ])
+
+  if (orderCount > 0 || invoiceCount > 0 || ddtCount > 0) {
+    const details = [
+      orderCount > 0 ? `${orderCount} ordini` : null,
+      invoiceCount > 0 ? `${invoiceCount} fatture` : null,
+      ddtCount > 0 ? `${ddtCount} DDT` : null,
+    ]
+      .filter(Boolean)
+      .join(", ")
+
+    return NextResponse.json(
+      {
+        error: `Impossibile eliminare: l'utente ha ${details} associati. I record contabili devono essere preservati.`,
+      },
+      { status: 409 }
+    )
+  }
+
+  await db.user.delete({ where: { id: userId } })
+
+  return NextResponse.json({ success: true })
+}

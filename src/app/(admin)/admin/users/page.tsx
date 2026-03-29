@@ -18,6 +18,8 @@ import {
   Check,
   X,
   Mail,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react"
 import { PageTransition } from "@/components/animations/page-transition"
 import { StaggerContainer, StaggerItem } from "@/components/animations/stagger-container"
@@ -26,6 +28,14 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { DataTable, type Column } from "@/components/ui/data-table"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { ROLE_LABELS } from "@/lib/constants"
 import { formatDateTime } from "@/lib/utils"
 
@@ -60,6 +70,9 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([])
   const [loading, setLoading] = useState(true)
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null)
+  const [deleteConfirmUser, setDeleteConfirmUser] = useState<AdminUser | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   useEffect(() => {
     const loadUsers = async () => {
@@ -148,6 +161,30 @@ export default function AdminUsersPage() {
     } finally {
       setUpdatingUserId(null)
       setActionMenuOpen(null)
+    }
+  }
+
+  const handleDeleteUser = async (user: AdminUser) => {
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setDeleteError(data.error || "Errore durante l'eliminazione")
+        return
+      }
+
+      setUsers((prev) => prev.filter((u) => u.id !== user.id))
+      setDeleteConfirmUser(null)
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -278,6 +315,18 @@ export default function AdminUsersPage() {
                 )}
               </button>
               <div className="my-1 h-px bg-border/50" />
+              <button
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-500 hover:bg-red-500/10 transition-colors"
+                onClick={() => {
+                  setDeleteConfirmUser(user)
+                  setDeleteError(null)
+                  setActionMenuOpen(null)
+                }}
+                disabled={updatingUserId === user.id}
+              >
+                <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+                Elimina Utente
+              </button>
             </div>
           )}
         </div>
@@ -388,6 +437,59 @@ export default function AdminUsersPage() {
           </StaggerItem>
         </StaggerContainer>
       </div>
+
+      {/* Dialog Conferma Eliminazione — stile macOS Destructive */}
+      <Dialog
+        open={!!deleteConfirmUser}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteConfirmUser(null)
+            setDeleteError(null)
+          }
+        }}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10 mb-3">
+              <AlertTriangle className="h-6 w-6 text-red-500" strokeWidth={1.75} />
+            </div>
+            <DialogTitle className="text-lg font-semibold">
+              Eliminare {deleteConfirmUser?.name}?
+            </DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground mt-1">
+              Questa azione è <strong>permanente</strong> e non può essere annullata.
+              L&apos;utente verrà rimosso definitivamente dal sistema.
+            </DialogDescription>
+          </DialogHeader>
+
+          {deleteError && (
+            <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-400">
+              {deleteError}
+            </div>
+          )}
+
+          <DialogFooter className="flex-row gap-2 sm:flex-row">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => {
+                setDeleteConfirmUser(null)
+                setDeleteError(null)
+              }}
+              disabled={deleting}
+            >
+              Annulla
+            </Button>
+            <Button
+              className="flex-1 bg-red-500 hover:bg-red-600 text-white border-0 shadow-sm"
+              onClick={() => deleteConfirmUser && handleDeleteUser(deleteConfirmUser)}
+              disabled={deleting || !!deleteError}
+            >
+              {deleting ? "Eliminazione..." : "Elimina Definitivamente"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageTransition>
   )
 }
