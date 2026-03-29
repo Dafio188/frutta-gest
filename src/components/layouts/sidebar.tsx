@@ -181,7 +181,7 @@ export function Sidebar() {
           )}
 
           {/* Nuova Sezione Amministrazione Tenant */}
-          {session?.user?.role === 'ADMIN' && (
+          {(session?.user?.role === 'ADMIN' || session?.user?.isSuperAdmin) && (
             <div key="tenant-admin">
               {!sidebarCollapsed && (
                 <p className="px-3 mb-2 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.1em] opacity-80">

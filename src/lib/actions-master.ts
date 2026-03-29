@@ -191,12 +191,17 @@ export async function getSaaSSummary() {
   const subs = await masterDb.subscription.findMany({ where: { status: 'active' } })
   const mrr = subs.reduce((acc, s) => acc + (s.subscriptionFee || 0) / 12, 0)
 
-  return {
-    orgCount,
-    activeSubs,
-    newLeads,
-    mrr
-  }
+  // Rinnovi reali: abbonamenti attivi che scadono entro 60 giorni
+  const now = new Date()
+  const in60Days = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000)
+  const renewingSoon = await masterDb.subscription.count({
+    where: {
+      status: 'active',
+      expiresAt: { gte: now, lte: in60Days },
+    }
+  })
+
+  return { orgCount, activeSubs, newLeads, mrr, renewingSoon }
 }
 
 export async function updateLeadStatus(id: string, status: any) {
@@ -333,4 +338,99 @@ export async function completeTenantSetup(token: string, password: string) {
   } finally {
     await tenantDb.$disconnect()
   }
+}
+
+// ============================================================
+// SCHEDA CLIENTE — Dettaglio Organizzazione
+// ============================================================
+
+export async function getOrganizationDetail(orgId: string) {
+  await requireSuperAdmin()
+  const org = await masterDb.organization.findUnique({
+    where: { id: orgId },
+    include: { subscription: true },
+  })
+  if (!org) throw new Error("Organizzazione non trovata")
+  return org
+}
+
+export async function getTenantUsers(orgId: string) {
+  await requireSuperAdmin()
+  const org = await masterDb.organization.findUnique({
+    where: { id: orgId },
+    select: { isActive: true },
+  })
+  if (!org?.isActive) return []
+
+  try {
+    const { tenantDbManager } = await import("@/lib/tenant-db")
+    const tenantClient = await tenantDbManager.getClient(orgId)
+    return await tenantClient.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        lastLoginAt: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+    })
+  } catch {
+    return []
+  }
+}
+
+export async function saveSubscriptionDetails(
+  orgId: string,
+  data: {
+    billingEmail?: string
+    billingIban?: string
+    subscriptionFee?: number
+    notes?: string
+    plan?: string
+    status?: string
+    expiresAt?: string
+    startsAt?: string
+    contactEmail?: string
+    contactPhone?: string
+  }
+) {
+  await requireSuperAdmin()
+  const { expiresAt, startsAt, plan, status, contactEmail, contactPhone, ...rest } = data
+
+  const sub = await masterDb.subscription.upsert({
+    where: { organizationId: orgId },
+    update: {
+      ...rest,
+      ...(expiresAt ? { expiresAt: new Date(expiresAt) } : {}),
+      ...(startsAt ? { startsAt: new Date(startsAt) } : {}),
+      ...(plan ? { plan: plan as any } : {}),
+      ...(status ? { status } : {}),
+    },
+    create: {
+      organizationId: orgId,
+      status: status || "active",
+      plan: (plan as any) || "BASIC",
+      ...(expiresAt ? { expiresAt: new Date(expiresAt) } : {}),
+      ...(startsAt ? { startsAt: new Date(startsAt) } : {}),
+      ...rest,
+    },
+  })
+
+  // Aggiorna i dati di contatto dell'organizzazione se forniti
+  if (contactEmail !== undefined || contactPhone !== undefined) {
+    await masterDb.organization.update({
+      where: { id: orgId },
+      data: {
+        ...(contactEmail !== undefined ? { contactEmail } : {}),
+        ...(contactPhone !== undefined ? { contactPhone } : {}),
+      },
+    })
+  }
+
+  revalidatePath(`/saas-crm/${orgId}`)
+  revalidatePath("/saas-crm")
+  return sub
 }

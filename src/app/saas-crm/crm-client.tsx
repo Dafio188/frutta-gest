@@ -84,7 +84,7 @@ export function SaasCrmClient({ initialSummary, initialLeads, initialOrganizatio
             { label: "MRR (Monthly Recurring)", value: formatCurrency(summary.mrr), sub: "Ricavi mensili stimati", icon: TrendingUp, color: "text-emerald-500" },
             { label: "Clienti Attivi", value: summary.activeSubs, sub: "Su " + summary.orgCount + " tenant totali", icon: Users, color: "text-blue-500" },
             { label: "Lead Nuovi", value: summary.newLeads, sub: "In attesa di contatto", icon: Sparkles, color: "text-amber-500" },
-            { label: "Rinnovi a breve", value: "0", sub: "Prossimi 60 giorni", icon: Clock, color: "text-purple-500" },
+            { label: "Rinnovi a breve", value: String(summary.renewingSoon ?? 0), sub: "Prossimi 60 giorni", icon: Clock, color: "text-purple-500" },
           ].map((kpi) => (
             <StaggerItem key={kpi.label}>
               <Card className="border-none shadow-xl bg-card/60 backdrop-blur-sm overflow-hidden group">
@@ -157,7 +157,7 @@ export function SaasCrmClient({ initialSummary, initialLeads, initialOrganizatio
                               INVITA ADMIN
                            </Button>
 
-                           <Link href={`/admin-master?edit=${org.id}`}>
+                           <Link href={`/saas-crm/${org.id}`}>
                               <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
                                 <ChevronRight className="h-4 w-4" />
                               </Button>
