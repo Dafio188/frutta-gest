@@ -214,6 +214,87 @@ export async function updateLeadStatus(id: string, status: any) {
   return lead
 }
 
+export async function deleteLead(id: string) {
+  await requireSuperAdmin()
+  await masterDb.lead.delete({ where: { id } })
+  revalidatePath("/saas-crm")
+  return { success: true }
+}
+
+/**
+ * Genera automaticamente la DB URL per un nuovo tenant.
+ * Usa lo stesso host Neon del master, con schema isolation via search_path.
+ */
+function buildTenantDbUrl(slug: string): string {
+  const masterUrl = process.env.MASTER_DATABASE_URL || process.env.DATABASE_URL || ""
+  // Estraiamo host/user/password/db dal master URL
+  const base = masterUrl.split("?")[0]
+  // Costruiamo la URL con schema = slug del tenant
+  return `${base}?sslmode=require&schema=${slug}`
+}
+
+/**
+ * Converte un Lead in un Tenant attivo:
+ * 1. Crea Organization nel Master
+ * 2. Crea Subscription (1 anno BASIC)
+ * 3. Inizializza il database del tenant (schema + admin user + catalogo)
+ * 4. Aggiorna il Lead con status CONVERTED
+ */
+export async function convertLeadToTenant(leadId: string) {
+  await requireSuperAdmin()
+
+  const lead = await masterDb.lead.findUnique({ where: { id: leadId } })
+  if (!lead) throw new Error("Lead non trovato")
+  if (lead.status === "CONVERTED") throw new Error("Questo lead è già stato convertito")
+
+  // Genera slug dal nome azienda o dal nome del lead
+  const rawSlug = (lead.company || lead.name)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "")
+    .substring(0, 20)
+
+  // Verifica unicità slug
+  const existing = await masterDb.organization.findUnique({ where: { slug: rawSlug } })
+  if (existing) throw new Error(`Lo slug "${rawSlug}" è già in uso. Converti manualmente dal pannello Infrastruttura.`)
+
+  const dbUrl = buildTenantDbUrl(rawSlug)
+
+  // 1. Crea Organization
+  const org = await masterDb.organization.create({
+    data: {
+      name: lead.company || lead.name,
+      slug: rawSlug,
+      dbUrl,
+      isActive: true,
+      contactEmail: lead.email,
+      contactPhone: lead.phone || null,
+    },
+  })
+
+  // 2. Inizializza il database (schema push + admin user + catalogo)
+  try {
+    await initializeTenantDatabase(org.id)
+  } catch (err: any) {
+    // Rollback: cancella l'org creata se il provisioning fallisce
+    await masterDb.organization.delete({ where: { id: org.id } })
+    throw new Error(`Provisioning database fallito: ${err.message}`)
+  }
+
+  // 3. Aggiorna Lead come CONVERTED 
+  await masterDb.lead.update({
+    where: { id: leadId },
+    data: {
+      status: "CONVERTED",
+      convertedOrgId: org.id,
+    },
+  })
+
+  revalidatePath("/saas-crm")
+  revalidatePath("/admin-master")
+  return { success: true, organization: org }
+}
+
+
 export async function updateSaaSSubscription(orgId: string, data: {
   billingEmail?: string;
   billingIban?: string;
