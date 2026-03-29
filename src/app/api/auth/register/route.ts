@@ -7,11 +7,25 @@
 
 import { NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
-import { getCurrentDb } from "@/lib/tenant-context"
+import { getCurrentDb, getTenantSlug } from "@/lib/tenant-context"
 import { registerSchema } from "@/lib/validations"
 
 export async function POST(req: NextRequest) {
   try {
+    // Blocco registrazione sul dominio master (fruttagest.it)
+    // Gli utenti si registrano solo via invite link dal proprio sottodominio tenant
+    const slug = await getTenantSlug()
+    if (slug === "master") {
+      return NextResponse.json(
+        {
+          error:
+            "La registrazione diretta non è disponibile su questo dominio. " +
+            "Accedi tramite il link di invito ricevuto dal tuo amministratore.",
+        },
+        { status: 403 }
+      )
+    }
+
     const db = await getCurrentDb()
     const body = await req.json()
     const parsed = registerSchema.safeParse(body)
@@ -43,18 +57,23 @@ export async function POST(req: NextRequest) {
         name,
         email,
         password: hashedPassword,
-        role: "CUSTOMER",
+        role: "OPERATOR",
       },
     })
 
-    await db.activityLog.create({
-      data: {
-        userId: user.id,
-        action: "USER_REGISTERED",
-        entity: "User",
-        entityId: user.id,
-      },
-    })
+    // ActivityLog esiste solo nel DB tenant, non nel master
+    try {
+      await db.activityLog.create({
+        data: {
+          userId: user.id,
+          action: "USER_REGISTERED",
+          entity: "User",
+          entityId: user.id,
+        },
+      })
+    } catch {
+      // silenzioso: il log non è critico
+    }
 
     return NextResponse.json(
       {
