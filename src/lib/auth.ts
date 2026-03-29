@@ -64,42 +64,39 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null
         }
 
+        const email = parsed.data.email.toLowerCase()
+        const password = parsed.data.password
+
         try {
           const slug = await getTenantSlug()
           let db: any;
           
           if (slug === 'master') {
-            process.stdout.write(`[AUTH DEBUG] Atomic Master Client Initializing...\n`)
-            const masterUrl = process.env.MASTER_DATABASE_URL + (process.env.MASTER_DATABASE_URL?.includes('?') ? '&' : '?') + 'schema=master&search_path=master';
-            db = new MasterClient({ adapter: masterAdapter })
+            console.log(`[AUTH DEBUG] Using Master DB for ${email}`)
+            db = masterDb
           } else {
+            console.log(`[AUTH DEBUG] Using Tenant DB for ${email} (Tenant: ${slug})`)
             db = await getCurrentDb()
           }
 
-          process.stdout.write(`[AUTH DEBUG] Attempt: ${parsed.data.email} | Tenant: ${slug}\n`)
-          process.stdout.write(`[AUTH DEBUG] DB Keys: ${Object.keys(db || {}).join(', ')}\n`);
-          
           const user = await db.user.findUnique({
-             where: { email: parsed.data.email },
+             where: { email },
           });
 
           if (!user) {
-            console.log(`[AUTH DEBUG] User not found in DB for tenant ${slug}`)
+            console.log(`[AUTH DEBUG] User ${email} not found in DB for slug: ${slug}`)
             return null
           }
 
           if (!user.password || !user.isActive) {
-            console.log(`[AUTH DEBUG] User inactive or no password`)
+            console.log(`[AUTH DEBUG] User ${email} exists but is inactive or has no password`)
             return null
           }
 
-          const passwordMatch = await bcrypt.compare(
-            parsed.data.password,
-            user.password
-          )
+          const passwordMatch = await bcrypt.compare(password, user.password)
 
           if (!passwordMatch) {
-            console.log(`[AUTH DEBUG] Password mismatch`)
+            console.log(`[AUTH DEBUG] Password mismatch for ${email}`)
             return null
           }
 
