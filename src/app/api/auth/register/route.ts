@@ -7,11 +7,12 @@
 
 import { NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
-import { db } from "@/lib/db"
+import { getCurrentDb } from "@/lib/tenant-context"
 import { registerSchema } from "@/lib/validations"
 
 export async function POST(req: NextRequest) {
   try {
+    const db = await getCurrentDb()
     const body = await req.json()
     const parsed = registerSchema.safeParse(body)
 

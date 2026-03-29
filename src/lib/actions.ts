@@ -12,7 +12,7 @@
 import { revalidatePath } from "next/cache"
 import { randomUUID } from "crypto"
 import { auth } from "@/lib/auth"
-import { getCurrentDb } from "@/lib/tenant-context"
+import { getCurrentDb, isMasterContext } from "@/lib/tenant-context"
 import { sendEmail } from "@/lib/email"
 import { getNextNumber } from "@/lib/number-sequence"
 import {
@@ -3769,12 +3769,26 @@ export async function getMarginReport() {
   })
 }
 
-// ============================================================
 // DASHBOARD
 // ============================================================
 
 export async function getDashboardKPIs() {
   const session = await requireAuth()
+  
+  // SICUREZZA & STABILITÀ: Se siamo sul dominio master, non ci sono dati tenant (ordini/fatture)
+  if (await isMasterContext()) {
+    return {
+      ordiniOggi: 0,
+      fatturatoMese: 0,
+      fatturatoMesePrec: 0,
+      incassoPrevisto: 0,
+      daPagareFornitori: 0,
+      ordiniInAttesa: 0,
+      ddtMancanti: 0,
+      scadenzeSuperate: 0,
+    }
+  }
+
   const db = await getCurrentDb()
 
   const now = new Date()
@@ -4271,6 +4285,12 @@ export async function updateAppSetting(key: string, value: unknown) {
 
 export async function getCompanyInfo() {
   const session = await requireAuth()
+
+  // Se siamo sul master, non c'è companyInfo (è legata al tenant)
+  if (await isMasterContext()) {
+    return null
+  }
+
   const db = await getCurrentDb()
 
   const info = await db.companyInfo.findFirst()

@@ -5,7 +5,7 @@
  * usando la tabella NumberSequence del database.
  */
 
-import { db } from "@/lib/db"
+import { getCurrentDb } from "@/lib/tenant-context"
 
 type SequenceType = "ORDER" | "DDT" | "INVOICE" | "CUSTOMER" | "SUPPLIER" | "PURCHASE_ORDER" | "SUPPLIER_INVOICE"
 
@@ -24,6 +24,7 @@ const PREFIXES: Record<SequenceType, string> = {
  * Formato: PREFIX-ANNO-NUMERO (es. ORD-2026-0001)
  */
 export async function getNextNumber(type: SequenceType): Promise<string> {
+  const db = await getCurrentDb()
   const year = new Date().getFullYear()
   const prefix = PREFIXES[type]
   const sequenceKey = `${type}_${year}`

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
-import { db } from "@/lib/db"
+import { getCurrentDb } from "@/lib/tenant-context"
 
 export async function GET() {
   const session = await auth()
+  const db = await getCurrentDb()
 
   if (!session?.user || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 403 })
@@ -34,6 +35,7 @@ export async function GET() {
 
 export async function PATCH(req: NextRequest) {
   const session = await auth()
+  const db = await getCurrentDb()
 
   if (!session?.user || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 403 })

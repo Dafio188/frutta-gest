@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server"
-import { db } from "@/lib/db"
+import { getCurrentDb } from "@/lib/tenant-context"
 import { parseOrderText } from "@/lib/ai/parse-order"
 
 // Verifica webhook (richiesta da Meta)
@@ -26,6 +26,7 @@ export async function GET(req: NextRequest) {
 // Ricezione messaggi
 export async function POST(req: NextRequest) {
   try {
+    const db = await getCurrentDb()
     const body = await req.json()
 
     const entries = body.entry || []

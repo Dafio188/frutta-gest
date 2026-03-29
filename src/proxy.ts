@@ -32,21 +32,25 @@ export default auth(async (req) => {
     tenant = hostname; 
   }
 
-  // 2. Protezione SuperAdmin (Global Master)
-  if (pathname.startsWith("/admin-master")) {
+  // 2. Protezione SuperAdmin (Global Master - Infrastruttura e CRM SaaS)
+  const isSuperAdminArea = pathname.startsWith("/admin-master") || pathname.startsWith("/saas-crm")
+  
+  if (isSuperAdminArea) {
     const isLoggedIn = !!req.auth?.user
-    const isSuperAdmin = req.auth?.user?.email?.toLowerCase() === process.env.SUPER_ADMIN_EMAIL?.toLowerCase()
+    const email = req.auth?.user?.email?.toLowerCase()
+    const superAdminEmail = process.env.SUPER_ADMIN_EMAIL?.toLowerCase()
+    const isSuperAdmin = email === superAdminEmail
     
     if (!isLoggedIn) {
       const loginUrl = new URL("/login", req.url)
-      loginUrl.host = req.headers.get("host") || loginUrl.host // FIX DOMINIO CUSTOM
+      loginUrl.host = req.headers.get("host") || loginUrl.host
       loginUrl.searchParams.set("callbackUrl", pathname)
       return NextResponse.redirect(loginUrl)
     }
     
     if (!isSuperAdmin) {
       const dashUrl = new URL("/dashboard", req.url)
-      dashUrl.host = req.headers.get("host") || dashUrl.host // FIX DOMINIO CUSTOM
+      dashUrl.host = req.headers.get("host") || dashUrl.host
       return NextResponse.redirect(dashUrl)
     }
   }

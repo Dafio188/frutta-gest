@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { renderToBuffer } from "@react-pdf/renderer"
 import { auth } from "@/lib/auth"
-import { db } from "@/lib/db"
+import { getCurrentDb } from "@/lib/tenant-context"
 import { DDTPdfDocument } from "@/components/ddt/ddt-pdf"
 import React from "react"
 
@@ -16,6 +16,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth()
+  const db = await getCurrentDb()
   if (!session) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
   }

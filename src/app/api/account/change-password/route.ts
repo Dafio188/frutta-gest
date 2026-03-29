@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 import { auth } from "@/lib/auth"
-import { db } from "@/lib/db"
+import { getCurrentDb } from "@/lib/tenant-context"
 
 export async function POST(req: NextRequest) {
   const session = await auth()
+  const db = await getCurrentDb()
 
   if (!session?.user) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })

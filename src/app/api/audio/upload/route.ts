@@ -7,11 +7,12 @@
 
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
-import { db } from "@/lib/db"
+import { getCurrentDb } from "@/lib/tenant-context"
 import { transcribeAudio } from "@/lib/ai/transcribe-audio"
 
 export async function POST(req: NextRequest) {
   const session = await auth()
+  const db = await getCurrentDb()
   if (!session) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
   }
@@ -40,8 +41,8 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    // Avvia trascrizione in background
-    transcribeAudio(record.id).catch((err) => {
+    // Avvia trascrizione in background passandogli il DB client corretto
+    transcribeAudio(record.id, db).catch((err) => {
       console.error("Errore trascrizione audio:", err)
     })
 

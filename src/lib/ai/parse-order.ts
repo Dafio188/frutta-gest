@@ -7,7 +7,6 @@
  */
 
 import { GoogleGenerativeAI } from "@google/generative-ai"
-import { db } from "@/lib/db"
 import type { ParsedOrderData, ParsedOrderItem } from "@/types"
 
 const SYSTEM_PROMPT = `Sei un assistente specializzato nel parsing di ordini di prodotti ortofrutticoli per il mercato italiano.
@@ -42,7 +41,7 @@ Rispondi SOLO con JSON valido nel seguente formato:
   "notes": "eventuali note o null"
 }`
 
-export async function parseOrderText(text: string, imageUrl?: string): Promise<ParsedOrderData> {
+export async function parseOrderText(text: string, imageUrl?: string, db?: any): Promise<ParsedOrderData> {
   if (!process.env.GEMINI_API_KEY) {
     console.error("GEMINI_API_KEY mancante")
     return { items: [], rawText: text }
@@ -54,7 +53,7 @@ export async function parseOrderText(text: string, imageUrl?: string): Promise<P
     generationConfig: { responseMimeType: "application/json" }
   })
 
-  const productNames = await getProductCatalogNames()
+  const productNames = await getProductCatalogNames(db)
   
   const prompt = `${SYSTEM_PROMPT}
 
@@ -89,7 +88,7 @@ ${text || "Nessun testo fornito, analizza l'immagine."}`
     }
 
     const parsed = JSON.parse(textResponse)
-    const matchedItems = await matchProductsToIds(parsed.items || [])
+    const matchedItems = await matchProductsToIds(parsed.items || [], db)
 
     return {
       items: matchedItems,
@@ -104,7 +103,7 @@ ${text || "Nessun testo fornito, analizza l'immagine."}`
   }
 }
 
-async function getProductCatalogNames(): Promise<string[]> {
+async function getProductCatalogNames(db: any): Promise<string[]> {
   const products = await db.product.findMany({
     where: { isAvailable: true },
     select: { name: true },
@@ -114,7 +113,8 @@ async function getProductCatalogNames(): Promise<string[]> {
 }
 
 async function matchProductsToIds(
-  items: Array<{ productName: string; quantity: number; unit: string }>
+  items: Array<{ productName: string; quantity: number; unit: string }>,
+  db: any
 ): Promise<ParsedOrderItem[]> {
   const allProducts = await db.product.findMany({
     where: { isAvailable: true },

@@ -125,29 +125,57 @@ export function Sidebar() {
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-6">
           {session?.user?.isSuperAdmin && (
-            <div key="master-admin">
-              {!sidebarCollapsed && (
-                <p className="px-3 mb-2 text-[10px] font-bold text-primary uppercase tracking-[0.1em] opacity-80">
-                  🚀 Infrastruttura Master
-                </p>
-              )}
-              <div className="space-y-1">
-                <Link
-                  href="/admin-master"
-                  onClick={() => setSidebarOpen(false)}
-                  className={cn(
-                    "relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold",
-                    "transition-all duration-200 shadow-sm",
-                    pathname === "/admin-master"
-                      ? "text-primary bg-primary/10 border border-primary/20"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-transparent"
-                  )}
-                >
-                  <Shield className="relative z-10 h-5 w-5 shrink-0 text-primary" strokeWidth={2} />
-                  {!sidebarCollapsed && (
-                    <span className="relative z-10 truncate">Pannello Master SaaS</span>
-                  )}
-                </Link>
+            <div key="master-admin" className="space-y-4">
+              <div>
+                {!sidebarCollapsed && (
+                  <p className="px-3 mb-2 text-[10px] font-bold text-primary uppercase tracking-[0.1em] opacity-80">
+                    🚀 Infrastruttura Master
+                  </p>
+                )}
+                <div className="space-y-1">
+                  <Link
+                    href="/admin-master"
+                    onClick={() => setSidebarOpen(false)}
+                    className={cn(
+                      "relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold",
+                      "transition-all duration-200 shadow-sm",
+                      pathname === "/admin-master"
+                        ? "text-primary bg-primary/10 border border-primary/20"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-transparent"
+                    )}
+                  >
+                    <Shield className="relative z-10 h-5 w-5 shrink-0 text-primary" strokeWidth={2} />
+                    {!sidebarCollapsed && (
+                      <span className="relative z-10 truncate">Pannello Master SaaS</span>
+                    )}
+                  </Link>
+                </div>
+              </div>
+
+              <div>
+                {!sidebarCollapsed && (
+                  <p className="px-3 mb-2 text-[10px] font-bold text-primary uppercase tracking-[0.1em] opacity-80">
+                    💼 CRM Clienti SaaS
+                  </p>
+                )}
+                <div className="space-y-1">
+                  <Link
+                    href="/saas-crm"
+                    onClick={() => setSidebarOpen(false)}
+                    className={cn(
+                      "relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold",
+                      "transition-all duration-200 shadow-sm",
+                      pathname === "/saas-crm"
+                        ? "text-primary bg-primary/10 border border-primary/20"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-transparent"
+                    )}
+                  >
+                    <TrendingUp className="relative z-10 h-5 w-5 shrink-0 text-primary" strokeWidth={2} />
+                    {!sidebarCollapsed && (
+                      <span className="relative z-10 truncate">Gestione Vendite & Lead</span>
+                    )}
+                  </Link>
+                </div>
               </div>
             </div>
           )}

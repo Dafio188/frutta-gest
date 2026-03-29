@@ -6,11 +6,10 @@
  */
 
 import OpenAI from "openai"
-import { db } from "@/lib/db"
 import { parseOrderText } from "@/lib/ai/parse-order"
 import fs from "fs"
 
-export async function transcribeAudio(transcriptionId: string): Promise<void> {
+export async function transcribeAudio(transcriptionId: string, db: any): Promise<void> {
   if (!process.env.OPENAI_API_KEY) {
     throw new Error("OPENAI_API_KEY non configurata")
   }
@@ -51,7 +50,7 @@ export async function transcribeAudio(transcriptionId: string): Promise<void> {
     fs.unlinkSync(tempPath)
 
     // Parsing del testo trascritto
-    const parsedData = await parseOrderText(transcription)
+    const parsedData = await parseOrderText(transcription, undefined, db)
 
     await db.audioTranscription.update({
       where: { id: transcriptionId },

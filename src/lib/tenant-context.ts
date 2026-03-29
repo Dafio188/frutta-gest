@@ -18,6 +18,14 @@ export async function getTenantSlug(): Promise<string> {
 }
 
 /**
+ * Verifica se ci troviamo nel contesto Master (dominio globale).
+ */
+export async function isMasterContext(): Promise<boolean> {
+  const slug = await getTenantSlug();
+  return slug === 'master';
+}
+
+/**
  * Recupera l'oggetto Organization completo dal Master DB basandosi sullo slug corrente.
  */
 export async function getCurrentOrganization() {

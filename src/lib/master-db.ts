@@ -10,13 +10,21 @@ const adapter = new PrismaPg(pool as any);
 
 console.log('[MASTER DB] Initializing Master DB Client with Adapter...');
 
+let instance = globalForMaster.masterPrisma;
+
+// SICUREZZA DEV: Se abbiamo una vecchia istanza in cache (senza la tabella Lead), forziamo il refresh
+if (instance && !('lead' in instance)) {
+  console.log('[MASTER DB] Stale client instance detected (missing Lead model). Refreshing...');
+  instance = undefined as any;
+}
+
 export const masterDb =
-  globalForMaster.masterPrisma ||
+  instance ||
   new MasterPrismaClient({
     adapter,
-    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+    log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   });
 
 if (process.env.NODE_ENV !== 'production') globalForMaster.masterPrisma = masterDb;
 
-console.log(`[MASTER DB] Initialized.`);
+console.log(`[MASTER DB] Initialized. Models available: ${Object.keys(masterDb).filter(k => !k.startsWith('$')).join(', ')}`);
