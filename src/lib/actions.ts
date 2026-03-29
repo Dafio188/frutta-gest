@@ -4299,6 +4299,12 @@ export async function getCompanyInfo() {
 
 export async function updateCompanyInfo(data: unknown) {
   const session = await requireAuth()
+
+  // Il SuperAdmin sul dominio master non ha un tenant con companyInfo
+  if (await isMasterContext()) {
+    throw new Error("Le impostazioni azienda non sono disponibili nel contesto Master. Accedi al tenant specifico.")
+  }
+
   const db = await getCurrentDb()
   const parsed = companyInfoSchema.safeParse(data)
   if (!parsed.success) throw new Error(parsed.error.issues.map((e) => e.message).join(", "))
