@@ -6,7 +6,7 @@ import { auth } from "@/lib/auth"
 import { exec } from "child_process"
 import { promisify } from "util"
 import bcrypt from "bcryptjs"
-
+import { seedTenantCatalog } from "@/lib/seed-catalog"
 const execPromise = promisify(exec)
 
 // Protezione: solo l'admin globale puo accedere a queste azioni
@@ -41,6 +41,23 @@ export async function toggleOrganizationStatus(id: string, isActive: boolean) {
   })
   revalidatePath("/admin-master")
   return org
+}
+
+export async function renewSubscription(orgId: string) {
+  await requireSuperAdmin()
+  const sub = await masterDb.subscription.findUnique({ where: { organizationId: orgId } })
+  if (!sub) throw new Error("Subscription non trovata")
+  
+  const currentExpiresAt = sub.expiresAt && sub.expiresAt > new Date() ? sub.expiresAt : new Date()
+  const nextYear = new Date(currentExpiresAt)
+  nextYear.setFullYear(nextYear.getFullYear() + 1)
+  
+  await masterDb.subscription.update({
+    where: { organizationId: orgId },
+    data: { expiresAt: nextYear }
+  })
+  revalidatePath("/admin-master")
+  return { success: true, expiresAt: nextYear }
 }
 
 export async function updateOrganization(id: string, data: { name?: string; dbUrl?: string; logoUrl?: string | null; primaryColor?: string | null }) {
@@ -119,7 +136,30 @@ export async function initializeTenantDatabase(orgId: string) {
       }
     })
     
+    // 3. SEED INIZIALE DEL CATALOGO
+    console.log(`[PROVISIONING] Inserimento catalogo prodotti base...`)
+    await seedTenantCatalog(tenantDb, org)
+    
     await tenantDb.$disconnect()
+    
+    // 4. CREA LICENZA MASTER SAAS DI 1 ANNO
+    console.log(`[PROVISIONING] Creazione abbonamento SaaS...`)
+    const nextYear = new Date()
+    nextYear.setFullYear(nextYear.getFullYear() + 1)
+    
+    await masterDb.subscription.upsert({
+      where: { organizationId: org.id },
+      update: {
+        status: "active",
+        expiresAt: nextYear
+      },
+      create: {
+        organizationId: org.id,
+        plan: "BASIC",
+        status: "active",
+        expiresAt: nextYear
+      }
+    })
     
     console.log(`[PROVISIONING] Database ${org.slug} inizializzato con successo.`)
     revalidatePath("/admin-master")

@@ -20,6 +20,11 @@ model Organization {
   isActive      Boolean  @default(true)
   primaryColor  String?  @default("#3b82f6")
   theme         String?  @default("dark")
+  
+  // Campi contatto extra
+  contactEmail  String?
+  contactPhone  String?
+  
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   
@@ -35,7 +40,18 @@ model Subscription {
   organizationId String           @unique
   plan           SubscriptionPlan @default(FREE)
   status         String           @default("active")
+  
+  // Gestione temporale licenza
+  startsAt       DateTime         @default(now())
   expiresAt      DateTime?
+  lastRenewalAt  DateTime?
+  
+  // Dati Fatturazione / Amministrativi (nella visione Master)
+  billingEmail   String?
+  billingIban    String?
+  subscriptionFee Float?          @default(0)
+  notes          String?          @db.Text
+
   organization   Organization     @relation(fields: [organizationId], references: [id])
 
   @@schema("master")
@@ -90,6 +106,50 @@ enum SubscriptionPlan {
   BASIC
   PRO
   ENTERPRISE
+
+  @@schema("master")
+}
+
+// ─── Lead: chi si registra/contatta da fruttagest.it ─────────────────────────
+model Lead {
+  id             String     @id @default(cuid())
+  name           String
+  email          String
+  company        String?
+  phone          String?
+  message        String?    @db.Text
+  status         LeadStatus @default(NEW)
+  convertedOrgId String?    // popolato dopo conversione a cliente
+
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@schema("master")
+}
+
+enum LeadStatus {
+  NEW          // appena arrivato dal form
+  CONTACTED    // SuperAdmin lo ha contattato
+  DEMO         // in fase demo/prova
+  CONVERTED    // diventato cliente pagante
+  LOST         // non interessato
+
+  @@schema("master")
+}
+
+// ─── InviteToken: invito Admin a un tenant via email ─────────────────────────
+model InviteToken {
+  id             String    @id @default(cuid())
+  token          String    @unique @default(cuid())
+  email          String
+  name           String?
+  role           String    @default("ADMIN")
+  organizationId String    // a quale tenant appartiene
+  tenantSlug     String    // per costruire il link (slug.fruttagest.it/accept-invite)
+  expiresAt      DateTime  // scade dopo 7 giorni
+  usedAt         DateTime? // null finché non usato
+
+  createdAt      DateTime  @default(now())
 
   @@schema("master")
 }

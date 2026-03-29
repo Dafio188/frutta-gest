@@ -20,7 +20,8 @@ import {
   getMasterOrganizations, 
   toggleOrganizationStatus,
   createMasterOrganization,
-  initializeTenantDatabase
+  initializeTenantDatabase,
+  renewSubscription
 } from "@/lib/actions-master"
 import { toast, Toaster } from "sonner"
 import { Label } from "@/components/ui/label"
@@ -209,6 +210,49 @@ export default function SuperAdminPage() {
                     <span className="text-zinc-400">
                       {new Date(org.createdAt).toLocaleDateString()}
                     </span>
+                  </div>
+
+                  {/* SUBSCRIPTION & LICENSE INFO */}
+                  <div className="pt-2 border-t border-zinc-800/30 flex items-center justify-between">
+                    <div className="flex flex-col">
+                      <span className="text-zinc-500 text-xs font-medium uppercase tracking-wider mb-1">
+                        Stato Licenza
+                      </span>
+                      {org.subscription?.expiresAt ? (() => {
+                        const expires = new Date(org.subscription.expiresAt);
+                        const daysLeft = Math.ceil((expires.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                        const isExpiring = daysLeft <= 60 && daysLeft > 0;
+                        const isExpired = daysLeft <= 0;
+                        return (
+                          <div className="flex flex-col">
+                            <span className={`text-sm font-semibold ${isExpired ? 'text-red-400' : isExpiring ? 'text-amber-400' : 'text-emerald-400'}`}>
+                              Scade: {expires.toLocaleDateString()}
+                            </span>
+                            {isExpiring && <span className="text-[10px] text-amber-500 mt-0.5">Scade a breve (Invia Email)</span>}
+                            {isExpired && <span className="text-[10px] text-red-500 mt-0.5">Licenza Scaduta!</span>}
+                          </div>
+                        )
+                      })() : (
+                        <span className="text-sm text-zinc-500 italic">Non inizializzata</span>
+                      )}
+                    </div>
+                    {org.subscription && (
+                      <button
+                        onClick={async () => {
+                          const t = toast.loading("Rinnovo licenza in corso...");
+                          try {
+                            await renewSubscription(org.id);
+                            toast.success("Licenza estesa di 1 Anno!", { id: t });
+                            loadOrgs();
+                          } catch (err) {
+                            toast.error("Errore durante il rinnovo", { id: t });
+                          }
+                        }}
+                        className="text-xs bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 px-3 py-1.5 rounded-lg transition-colors font-medium relative z-20"
+                      >
+                        + 1 Anno
+                      </button>
+                    )}
                   </div>
                 </div>
 

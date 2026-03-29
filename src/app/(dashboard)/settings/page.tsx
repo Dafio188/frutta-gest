@@ -7,7 +7,7 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import {
   Building2, User, Bell, Palette, Save, Lock,
@@ -24,36 +24,65 @@ import { Separator } from "@/components/ui/separator"
 import { PageTransition } from "@/components/animations/page-transition"
 import { StaggerContainer, StaggerItem } from "@/components/animations/stagger-container"
 import { useUIStore } from "@/stores/ui-store"
+import { getCompanyInfo, updateCompanyInfo } from "@/lib/actions"
+import { useSession } from "next-auth/react"
 
 export default function SettingsPage() {
   const { addToast, sidebarCollapsed, setSidebarCollapsed } = useUIStore()
 
+  const { data: session } = useSession()
+
   // Azienda state
   const [company, setCompany] = useState({
-    companyName: "FruttaGest S.r.l.",
-    vatNumber: "IT12345678901",
-    fiscalCode: "12345678901",
-    sdiCode: "ABCDEFG",
-    pecEmail: "fruttagest@pec.it",
-    address: "Via Roma 123",
-    city: "Milano",
-    province: "MI",
-    postalCode: "20100",
-    phone: "+39 02 1234567",
-    email: "info@fruttagest.it",
-    bankName: "Banca Intesa",
-    iban: "IT60X0542811101000000123456",
-    bic: "BCITITMM",
+    companyName: "",
+    vatNumber: "",
+    fiscalCode: "",
+    sdiCode: "",
+    pecEmail: "",
+    address: "",
+    city: "",
+    province: "",
+    postalCode: "",
+    phone: "",
+    email: "",
+    bankName: "",
+    iban: "",
+    bic: "",
   })
 
   // Profilo state
   const [profile, setProfile] = useState({
-    name: "Mario Rossi",
-    email: "mario@fruttagest.it",
+    name: session?.user?.name || "",
+    email: session?.user?.email || "",
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   })
+
+  useEffect(() => {
+    async function loadData() {
+      const data = await getCompanyInfo();
+      if (data) {
+        setCompany({
+          companyName: data.companyName || "",
+          vatNumber: data.vatNumber || "",
+          fiscalCode: data.fiscalCode || "",
+          sdiCode: data.sdiCode || "",
+          pecEmail: data.pecEmail || "",
+          address: data.address || "",
+          city: data.city || "",
+          province: data.province || "",
+          postalCode: data.postalCode || "",
+          phone: data.phone || "",
+          email: data.email || "",
+          bankName: data.bankName || "",
+          iban: data.bankIban || "",
+          bic: data.bankBic || "",
+        });
+      }
+    }
+    loadData();
+  }, [])
 
   // Notifiche state
   const [notifications, setNotifications] = useState({
@@ -128,7 +157,23 @@ export default function SettingsPage() {
           description: "La tua password è stata modificata.",
         })
       } else {
-        await new Promise((r) => setTimeout(r, 800))
+        await updateCompanyInfo({
+          companyName: company.companyName,
+          vatNumber: company.vatNumber,
+          fiscalCode: company.fiscalCode,
+          sdiCode: company.sdiCode,
+          pecEmail: company.pecEmail,
+          address: company.address,
+          city: company.city,
+          province: company.province,
+          postalCode: company.postalCode,
+          phone: company.phone,
+          email: company.email,
+          bankName: company.bankName,
+          bankIban: company.iban,
+          bankBic: company.bic,
+        });
+        
         addToast({
           type: "success",
           title: "Impostazioni salvate",
