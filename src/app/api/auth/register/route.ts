@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
         name,
         email,
         password: hashedPassword,
-        role: "OPERATOR",
+        role: "CUSTOMER", // Cliente del tenant (es. ristorante che ordina da Simone Fruit)
       },
     })
 
