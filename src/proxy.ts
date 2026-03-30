@@ -10,9 +10,11 @@ export default auth(async (req) => {
   const hostname = req.headers.get('host') || '';
 
   // 1. Identificazione Tenant
-  let tenant = '';
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'fruttagest.it';
-  
+  // Sottodomini riservati: www/app/api ecc. → trattati come master, non come tenant
+  const RESERVED_SUBDOMAINS = new Set(['www', 'app', 'api', 'mail', 'smtp'])
+  let tenant = '';
+
   if (hostname === 'localhost:3650' || hostname === '127.0.0.1:3650') {
     let t = req.nextUrl.searchParams.get('tenant');
     if (!t) {
@@ -24,12 +26,15 @@ export default auth(async (req) => {
       }
     }
     tenant = t || 'master';
-  } else if (hostname.endsWith(`.${rootDomain}`)) {
-    tenant = hostname.replace(`.${rootDomain}`, '');
   } else if (hostname === rootDomain) {
+    // fruttagest.it → master
     tenant = 'master';
+  } else if (hostname.endsWith(`.${rootDomain}`)) {
+    const sub = hostname.replace(`.${rootDomain}`, '');
+    // www.fruttagest.it → master (non è un tenant)
+    tenant = RESERVED_SUBDOMAINS.has(sub) ? 'master' : sub;
   } else {
-    tenant = hostname; 
+    tenant = hostname;
   }
 
   // 2. Protezione SuperAdmin (Global Master - Infrastruttura e CRM SaaS)

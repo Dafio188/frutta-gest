@@ -30,6 +30,15 @@ export async function POST(req: NextRequest) {
 
     const normalizedEmail = email.toLowerCase().trim()
 
+    // Guard: se siamo sul dominio master (www/root) non abbiamo un tenant DB
+    // Gli utenti Admin/Customer appartengono a slug.fruttagest.it, non al root domain
+    const tenantSlugHeader = req.headers.get("x-tenant-slug") || ""
+    if (!tenantSlugHeader || tenantSlugHeader === "master") {
+      console.log(`[ForgotPassword] Richiesta da master domain — nessun tenant DB. Email: ${normalizedEmail}`)
+      // Rispondi con successo silenzioso per non rivelare la struttura
+      return NextResponse.json({ success: true })
+    }
+
     // 1. Trova l'utente nel DB del tenant corrente
     const db = await getCurrentDb()
     const user = await db.user.findUnique({
