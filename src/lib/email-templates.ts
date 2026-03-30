@@ -34,12 +34,12 @@ function emailWrapper(content: string, previewText = "") {
           <tr>
             <td style="padding-bottom:24px;text-align:center;">
               <a href="${BASE_URL}" style="text-decoration:none;">
-                <div style="display:inline-flex;align-items:center;gap:8px;">
-                  <div style="width:36px;height:36px;background:linear-gradient(135deg,#059669,#34d399);border-radius:10px;display:inline-flex;align-items:center;justify-content:center;">
-                    <span style="color:#fff;font-size:18px;font-weight:800;line-height:1;">🍊</span>
-                  </div>
-                  <span style="font-size:18px;font-weight:800;color:#064e3b;letter-spacing:-0.5px;">FruttaGest</span>
-                </div>
+                <img
+                  src="${BASE_URL}/LOGO.png"
+                  alt="FruttaGest"
+                  width="180"
+                  style="height:auto;max-width:180px;display:block;margin:0 auto;"
+                />
               </a>
             </td>
           </tr>
