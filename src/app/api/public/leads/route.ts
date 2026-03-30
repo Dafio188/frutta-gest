@@ -3,10 +3,12 @@
  * 
  * Riceve le richieste di demo dal form contatti e le salva
  * nella tabella Lead del database Master.
+ * Invia notifica email al SuperAdmin (info@fruttagest.it).
  */
 
 import { NextResponse } from "next/server"
 import { masterDb } from "@/lib/master-db"
+import { sendLeadNotificationEmail } from "@/lib/email"
 
 export async function POST(req: Request) {
   try {
@@ -17,7 +19,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Campi obbligatori mancanti" }, { status: 400 })
     }
 
-    // Salvataggio nel Master DB
+    // 1. Salvataggio nel Master DB
     const lead = await masterDb.lead.create({
       data: {
         name,
@@ -25,16 +27,26 @@ export async function POST(req: Request) {
         company: company || null,
         phone: phone || null,
         message,
-        status: "NEW", // Nuovo Lead
+        status: "NEW",
       }
     })
 
-    console.log(`[MASTER DB] Nuovo Lead salvato con successo: ${lead.email}`)
+    console.log(`[Lead] Nuovo lead salvato: ${lead.email}`)
+
+    // 2. Notifica email al SuperAdmin (non bloccante)
+    sendLeadNotificationEmail({
+      leadId: lead.id,
+      leadName: name,
+      leadEmail: email,
+      leadPhone: phone || null,
+      leadCompany: company || null,
+      leadMessage: message,
+    }).catch((err) => console.error("[Lead] Errore invio notifica email:", err))
 
     return NextResponse.json({ success: true, id: lead.id }, { status: 201 })
 
   } catch (error: any) {
-    console.error("[MASTER DB ERROR] Fallimento salvataggio Lead:", error)
+    console.error("[Lead] Errore salvataggio:", error)
     return NextResponse.json({ error: "Errore interno del server" }, { status: 500 })
   }
 }

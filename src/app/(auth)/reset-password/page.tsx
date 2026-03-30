@@ -10,7 +10,6 @@ import { motion } from "framer-motion"
 import { Lock, Leaf, ArrowLeft, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { updatePassword } from "@/lib/actions"
 import { useRouter } from "next/navigation"
 
 const stagger = {
@@ -46,6 +45,11 @@ export default function ResetPasswordPage({
       return
     }
 
+    if (password.length < 8) {
+      setError("La password deve essere di almeno 8 caratteri")
+      return
+    }
+
     if (password !== confirmPassword) {
       setError("Le password non coincidono")
       return
@@ -53,17 +57,20 @@ export default function ResetPasswordPage({
 
     setLoading(true)
     try {
-      await updatePassword({ token, password, confirmPassword })
-      setSuccess(true)
-      setTimeout(() => {
-        router.push("/login")
-      }, 3000)
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message)
+      const res = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, password }),
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        setSuccess(true)
+        setTimeout(() => router.push("/login"), 3000)
       } else {
-        setError("Si è verificato un errore. Riprova.")
+        setError(data.error || "Errore durante il reset. Riprova.")
       }
+    } catch {
+      setError("Errore di rete. Riprova più tardi.")
     } finally {
       setLoading(false)
     }

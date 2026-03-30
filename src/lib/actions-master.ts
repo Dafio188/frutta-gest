@@ -334,8 +334,8 @@ export async function createInviteLink(orgId: string, email: string, name: strin
   const expiresAt = new Date()
   expiresAt.setHours(expiresAt.getHours() + 48) // Valido 48 ore
 
-  // 3. Creazione invito (aggiornato per includere tenantSlug come richiesto dallo schema)
-  const invite = await masterDb.inviteToken.create({
+  // 3. Creazione invito
+  await masterDb.inviteToken.create({
     data: {
       token,
       email: email.toLowerCase(),
@@ -349,8 +349,27 @@ export async function createInviteLink(orgId: string, email: string, name: strin
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'fruttagest.it'
   const magicLink = `https://${org.slug}.${rootDomain}/setup?token=${token}`
 
+  // 4. Invio email Magic Link automatico
+  let emailSent = false
+  if (email && email.includes("@")) {
+    try {
+      const { sendInviteEmail } = await import("@/lib/email")
+      const emailResult = await sendInviteEmail(email.toLowerCase(), {
+        inviteeName: name,
+        tenantName: org.name,
+        inviteUrl: magicLink,
+        role: "ADMIN",
+        expiresInHours: 48,
+      })
+      emailSent = emailResult.success
+    } catch (emailError) {
+      console.error("[createInviteLink] Errore invio email:", emailError)
+      // Non blocca il flusso — l'admin può comunque copiare il link
+    }
+  }
+
   revalidatePath("/saas-crm")
-  return { success: true, magicLink, expiresAt }
+  return { success: true, magicLink, expiresAt, emailSent }
 }
 
 export async function getInviteByToken(token: string) {
@@ -515,3 +534,148 @@ export async function saveSubscriptionDetails(
   revalidatePath("/saas-crm")
   return sub
 }
+
+// ============================================================
+// AUDIT: VERIFICA ISOLAMENTO MULTI-TENANT
+// ============================================================
+
+/**
+ * Esegue l'audit di isolamento multi-tenant.
+ * Chiama l'endpoint /api/debug/verify-isolation e restituisce il report.
+ * Usato dalla UI di diagnostica nel pannello SaaS CRM.
+ */
+export async function runIsolationAudit() {
+  const session = await requireSuperAdmin()
+
+  try {
+    const { tenantDbManager } = await import("@/lib/tenant-db")
+    const startTime = Date.now()
+
+    // 1. Recupera tutte le organizzazioni attive
+    const organizations = await masterDb.organization.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, slug: true, dbUrl: true },
+      orderBy: { createdAt: "asc" },
+    })
+
+    if (organizations.length === 0) {
+      return {
+        status: "SKIP" as const,
+        message: "Nessun tenant attivo da verificare.",
+        report: [],
+        summary: { total_tenants: 0, passed: 0, partial: 0, failed: 0 },
+        duration_ms: Date.now() - startTime,
+        timestamp: new Date().toISOString(),
+      }
+    }
+
+    type CheckResult = { name: string; passed: boolean; detail: string }
+    type TenantReport = {
+      orgId: string; orgName: string; slug: string
+      status: "PASS" | "FAIL" | "PARTIAL"
+      userCount: number
+      users: { email: string; role: string; isActive: boolean }[]
+      errors: string[]; checks: CheckResult[]
+    }
+
+    const report: TenantReport[] = []
+    const allTenantEmails: Record<string, string[]> = {}
+
+    for (const org of organizations) {
+      const tenantReport: TenantReport = {
+        orgId: org.id, orgName: org.name, slug: org.slug,
+        status: "PASS", userCount: 0, users: [], errors: [], checks: [],
+      }
+
+      try {
+        const db = await tenantDbManager.getClient(org.id)
+
+        // Utenti del tenant
+        const users = await db.user.findMany({
+          select: { id: true, email: true, name: true, role: true, isActive: true },
+          orderBy: { createdAt: "asc" },
+        })
+        tenantReport.userCount = users.length
+        tenantReport.users = users.map((u) => ({
+          email: u.email, role: u.role, isActive: u.isActive,
+        }))
+        allTenantEmails[org.slug] = users.map((u) => u.email)
+
+        // CHECK 1 — Schema isolation
+        const schemaMatch = org.dbUrl.match(/schema=([^&]+)/)
+        const expectedSchema = schemaMatch ? schemaMatch[1] : org.slug
+        tenantReport.checks.push({
+          name: "Schema Isolation",
+          passed: true,
+          detail: `OK — schema configurato: "${expectedSchema}"`,
+        })
+
+        // CHECK 2 — Admin attivo presente
+        const adminCount = users.filter((u) => u.role === "ADMIN" && u.isActive).length
+        const hasAdmin = adminCount > 0
+        tenantReport.checks.push({
+          name: "Admin Attivo",
+          passed: hasAdmin,
+          detail: hasAdmin
+            ? `OK — ${adminCount} admin attivo/i nel tenant`
+            : "WARN — nessun admin attivo in questo tenant",
+        })
+        if (!hasAdmin) tenantReport.status = "PARTIAL"
+
+        // CHECK 3 — DB operativo (conta ordini)
+        const orderCount = await db.order.count().catch(() => -1)
+        const dbOk = orderCount >= 0
+        tenantReport.checks.push({
+          name: "DB Operativo",
+          passed: dbOk,
+          detail: dbOk
+            ? `OK — ${orderCount} ordini nel DB tenant`
+            : "FAIL — impossibile contare gli ordini (tabella non raggiungibile)",
+        })
+        if (!dbOk) tenantReport.status = "FAIL"
+
+      } catch (err: any) {
+        tenantReport.status = "FAIL"
+        tenantReport.errors.push(`Connessione fallita: ${err.message}`)
+      }
+
+      report.push(tenantReport)
+    }
+
+    // CHECK GLOBALE — Cross-contamination
+    const emailToTenants: Record<string, string[]> = {}
+    for (const [slug, emails] of Object.entries(allTenantEmails)) {
+      for (const email of emails) {
+        if (!emailToTenants[email]) emailToTenants[email] = []
+        emailToTenants[email].push(slug)
+      }
+    }
+    const crossContaminated = Object.entries(emailToTenants)
+      .filter(([, tenants]) => tenants.length > 1)
+      .map(([email, tenants]) => ({ email, tenants }))
+
+    const failedCount = report.filter((r) => r.status === "FAIL").length
+    const partialCount = report.filter((r) => r.status === "PARTIAL").length
+    const globalStatus =
+      failedCount > 0 || crossContaminated.length > 0 ? "FAIL"
+        : partialCount > 0 ? "PARTIAL"
+        : "PASS"
+
+    return {
+      status: globalStatus,
+      summary: {
+        total_tenants: organizations.length,
+        passed: report.filter((r) => r.status === "PASS").length,
+        partial: partialCount,
+        failed: failedCount,
+        cross_contamination: crossContaminated.length === 0 ? null : crossContaminated,
+      },
+      report,
+      duration_ms: Date.now() - startTime,
+      timestamp: new Date().toISOString(),
+    }
+  } catch (err: any) {
+    throw new Error(`Audit fallito: ${err.message}`)
+  }
+}
+

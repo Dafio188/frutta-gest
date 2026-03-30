@@ -453,12 +453,15 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
     setError("")
     
     try {
-      // Simulate API call or call existing resetPassword action if available
-      const { resetPassword } = await import("@/lib/actions")
-      await resetPassword(email)
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      })
+      // Rispondi sempre con successo per sicurezza (non rivela se email esiste)
       setSent(true)
     } catch {
-      setError("Errore durante l'invio")
+      setError("Errore di rete. Riprova tra qualche istante.")
     } finally {
       setLoading(false)
     }

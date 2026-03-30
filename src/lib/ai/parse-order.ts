@@ -4,10 +4,14 @@
  * Usa Google Gemini per analizzare testo libero (da WhatsApp, email, audio)
  * e estrarre una lista strutturata di prodotti con quantità.
  * Fa matching fuzzy con il catalogo prodotti esistente.
+ *
+ * Il parametro `db` è opzionale: se non fornito viene risolto
+ * automaticamente tramite `getCurrentDb()` (contesto tenant-aware).
  */
 
 import { GoogleGenerativeAI } from "@google/generative-ai"
 import type { ParsedOrderData, ParsedOrderItem } from "@/types"
+import { getCurrentDb } from "@/lib/tenant-context"
 
 const SYSTEM_PROMPT = `Sei un assistente specializzato nel parsing di ordini di prodotti ortofrutticoli per il mercato italiano.
 
@@ -41,7 +45,10 @@ Rispondi SOLO con JSON valido nel seguente formato:
   "notes": "eventuali note o null"
 }`
 
-export async function parseOrderText(text: string, imageUrl?: string, db?: any): Promise<ParsedOrderData> {
+export async function parseOrderText(text: string, imageUrl?: string, dbOverride?: any): Promise<ParsedOrderData> {
+  // Risolve il client DB corretto: usa quello fornito (da audio/whatsapp)
+  // o lo risolve autonomamente via contesto tenant (da API route dirette)
+  const db = dbOverride ?? await getCurrentDb()
   if (!process.env.GEMINI_API_KEY) {
     console.error("GEMINI_API_KEY mancante")
     return { items: [], rawText: text }
@@ -53,7 +60,7 @@ export async function parseOrderText(text: string, imageUrl?: string, db?: any):
     generationConfig: { responseMimeType: "application/json" }
   })
 
-  const productNames = await getProductCatalogNames(db)
+  const productNames = await getProductCatalogNames(db).catch(() => [])
   
   const prompt = `${SYSTEM_PROMPT}
 
@@ -103,24 +110,23 @@ ${text || "Nessun testo fornito, analizza l'immagine."}`
   }
 }
 
-async function getProductCatalogNames(db: any): Promise<string[]> {
+async function getProductCatalogNames(db: Awaited<ReturnType<typeof getCurrentDb>>): Promise<string[]> {
   const products = await db.product.findMany({
     where: { isAvailable: true },
     select: { name: true },
     orderBy: { name: "asc" },
   })
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return products.map((p: any) => p.name)
+  return products.map((p: { name: string }) => p.name)
 }
 
 async function matchProductsToIds(
   items: Array<{ productName: string; quantity: number; unit: string }>,
-  db: any
+  db: Awaited<ReturnType<typeof getCurrentDb>>
 ): Promise<ParsedOrderItem[]> {
   const allProducts = await db.product.findMany({
     where: { isAvailable: true },
     select: { id: true, name: true, unit: true, defaultPrice: true },
-  })
+  }).catch(() => [] as Array<{ id: string; name: string; unit: string; defaultPrice: any }>)
 
   return items.map((item) => {
     const normalizedName = item.productName.toLowerCase().trim()
