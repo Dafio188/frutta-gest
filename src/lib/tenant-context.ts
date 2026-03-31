@@ -1,20 +1,30 @@
 // src/lib/tenant-context.ts
-import { headers } from 'next/headers';
+import { headers, cookies } from 'next/headers';
 import { masterDb } from './master-db';
 import { getTenantDb } from './tenant-db';
 
 /**
  * Recupera lo slug del tenant corrente dagli header iniettati dal middleware.
+ * Usa il cookie come fallback affidabile per le Server Actions (richieste POST).
  */
 export async function getTenantSlug(): Promise<string> {
   const headerList = await headers();
   const tenantSlug = headerList.get('X-Tenant-Slug');
-  
-  if (!tenantSlug) {
-    return process.env.NEXT_PUBLIC_DEFAULT_TENANT || 'master';
+
+  if (tenantSlug) {
+    return tenantSlug;
   }
-  
-  return tenantSlug;
+
+  // Fallback: cookie persistente — essenziale per le Server Actions
+  // che non portano l'header iniettato dal middleware
+  const cookieStore = await cookies();
+  const tenantCookie = cookieStore.get('tenant')?.value;
+
+  if (tenantCookie) {
+    return tenantCookie;
+  }
+
+  return process.env.NEXT_PUBLIC_DEFAULT_TENANT || 'master';
 }
 
 /**

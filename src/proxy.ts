@@ -16,15 +16,24 @@ export default auth(async (req) => {
   let tenant = '';
 
   if (hostname === 'localhost:3650' || hostname === '127.0.0.1:3650') {
-    let t = req.nextUrl.searchParams.get('tenant');
+    // Query param ha la priorità massima
+    let t: string | undefined = req.nextUrl.searchParams.get('tenant') ?? undefined;
+
+    // Fallback 1: cookie persistente (fondamentale per le Server Actions POST)
+    if (!t) {
+      t = req.cookies.get('tenant')?.value;
+    }
+
+    // Fallback 2: referer (meno affidabile, usato solo come ultima risorsa)
     if (!t) {
       const referer = req.headers.get('referer');
       if (referer) {
         try {
-          t = new URL(referer).searchParams.get('tenant');
-        } catch(e) {}
+          t = new URL(referer).searchParams.get('tenant') ?? undefined;
+        } catch (_e) {}
       }
     }
+
     tenant = t || 'master';
   } else if (hostname === rootDomain) {
     // fruttagest.it → master
@@ -64,11 +73,28 @@ export default auth(async (req) => {
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set('X-Tenant-Slug', tenant);
 
-  return NextResponse.next({
+  const response = NextResponse.next({
     request: {
       headers: requestHeaders,
     },
   });
+
+  // 4. Persistenza tenant nel cookie (essenziale per le Server Actions POST)
+  // Le Server Actions non portano query params → il cookie è la fonte affidabile
+  if (tenant && tenant !== 'master') {
+    response.cookies.set('tenant', tenant, {
+      path: '/',
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24, // 24 ore, si rinnova ad ogni navigazione
+    });
+  } else {
+    // Pulisci il cookie sul dominio master per evitare contaminazioni
+    response.cookies.delete('tenant');
+  }
+
+  return response;
 })
 
 export const config = {
