@@ -3,6 +3,7 @@ import Credentials from "next-auth/providers/credentials"
 import { loginSchema } from "@/lib/validations"
 
 export const authConfig = {
+  trustHost: true,
   providers: [], // Verranno popolati in auth.ts
   pages: {
     signIn: "/login",
