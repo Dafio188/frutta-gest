@@ -69,7 +69,30 @@ export default auth(async (req) => {
     }
   }
 
-  // 3. Iniezione Header Tenant
+  // 3. Protezione Area Privata (Dashboard dei clienti e operatori vari)
+  const isPrivateRoute = 
+    pathname.startsWith("/dashboard") || 
+    pathname.startsWith("/settings") || 
+    pathname.startsWith("/profile") ||
+    pathname.startsWith("/notifiche") ||
+    pathname.startsWith("/ordini") ||
+    pathname.startsWith("/finanza") ||
+    pathname.startsWith("/clienti") ||
+    pathname.startsWith("/fornitori") ||
+    pathname.startsWith("/portale") ||
+    pathname.startsWith("/fatture");
+  
+  if (isPrivateRoute) {
+    const isLoggedIn = !!req.auth?.user;
+    if (!isLoggedIn) {
+      const loginUrl = new URL("/login", req.url)
+      loginUrl.host = req.headers.get("host") || loginUrl.host
+      loginUrl.searchParams.set("callbackUrl", pathname)
+      return NextResponse.redirect(loginUrl)
+    }
+  }
+
+  // 4. Iniezione Header Tenant
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set('X-Tenant-Slug', tenant);
 
