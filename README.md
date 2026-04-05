@@ -297,7 +297,8 @@ Lo schema Prisma (`prisma/schema.prisma`) definisce **30+ modelli** che coprono 
   - `/terms` — Termini e Condizioni d’uso
   - `/contact` — Pagina Contatti con rimando a davidefiore.com per i recapiti aggiornati
   - link inseriti nel footer della home (Privacy, Termini, Contatti)
-  - aggiornato il proxy di protezione (`src/proxy.ts`) per mantenere queste route pubbliche (no redirect al login)
+  - aggiornato il middleware di protezione (`src/middleware.ts`) per mantenere queste route pubbliche (no redirect al login)
+
 - Login Google (OAuth) operativo:
   - provider Google configurato in `src/lib/auth.ts` tramite `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET`
   - bottone “Continua con Google” attivo in login e registrazione
