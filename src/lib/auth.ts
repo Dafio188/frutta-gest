@@ -117,6 +117,45 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     ...authConfig.callbacks,
+    async signIn({ user, account, profile }) {
+      // Se è Credentials (ha già validato nel authorize), lascia passare
+      if (account?.provider === "credentials") return true;
+
+      // Se è OAuth (Google), controlliamo nel DB se l'utente esiste
+      if (user.email) {
+        try {
+          const email = user.email.toLowerCase();
+          const { getTenantSlug, getCurrentDb } = await import("@/lib/tenant-context");
+          const { masterDb } = await import("@/lib/master-db");
+          const slug = await getTenantSlug();
+          let db: any = slug === 'master' ? masterDb : await getCurrentDb();
+          
+          const dbUser = await db.user.findUnique({ where: { email } });
+          
+          if (!dbUser) {
+            console.log(`[AUTH DEBUG] Google Login rejected: User ${email} does not exist in domain ${slug}`);
+            // Puoi gestire l'auto-creazione qui se desiderato, ma in B2B di solito si rifiuta
+            return false; // Access Denied
+          }
+          
+          if (!dbUser.isActive) {
+            console.log(`[AUTH DEBUG] Google Login rejected: User ${email} is inactive`);
+            return false;
+          }
+          
+          // Popoliamo l'oggetto user con i dati del DB per il passaggio a jwt()
+          user.role = dbUser.role;
+          user.customerId = dbUser.customerId;
+          user.id = dbUser.id;
+          
+          return true;
+        } catch (e) {
+          console.error("SignIn Callback Error", e);
+          return false;
+        }
+      }
+      return false;
+    },
     async session({ session, token }) {
       if (token.sub) {
         session.user.id = token.sub
@@ -131,8 +170,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async jwt({ token, user }) {
       if (user) {
-        token.role = user.role
-        token.customerId = user.customerId ?? null
+        // Al primo login (OAuth o Credentials), user contiene role e customerId
+        token.role = (user as any).role
+        token.customerId = (user as any).customerId ?? null
         const { getTenantSlug } = await import("@/lib/tenant-context")
         token.tenantSlug = await getTenantSlug()
         token.isSuperAdmin = user.email?.toLowerCase() === process.env.SUPER_ADMIN_EMAIL?.toLowerCase()
