@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import {
   ArrowLeft, FileText, User, MapPin, Phone, Mail, CreditCard,
-  CheckCircle2, Clock, Send, Ban, AlertTriangle, Loader2, Truck, Trash2,
+  CheckCircle2, Clock, Send, Ban, AlertTriangle, Loader2, Truck, Trash2, Printer,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -169,6 +169,10 @@ export default function FatturaDettaglioPage({ params }: { params: Promise<{ id:
             </div>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => window.open(`/api/invoices/${invoice.id}/pdf`, '_blank')}>
+              <Printer className="h-4 w-4 mr-1" strokeWidth={1.75} />
+              Stampa Fattura
+            </Button>
             {actions.map((action) => (
               <Button key={action.next} size="sm" onClick={() => handleStatusChange(action.next)} disabled={actionLoading}>
                 {actionLoading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <action.icon className="h-4 w-4 mr-1" strokeWidth={1.75} />}

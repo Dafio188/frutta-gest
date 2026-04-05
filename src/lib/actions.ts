@@ -5202,3 +5202,101 @@ export async function updatePassword(data: unknown) {
 
   return { success: true }
 }
+
+// ============================================================
+// DASHBOARD CHARTS
+// ============================================================
+
+export async function getDashboardChartsData() {
+  const session = await requireAuth()
+  const db = await getCurrentDb()
+
+  // 1. Mensile (Fatturato ultimi 6 mesi)
+  const today = new Date()
+  const sixMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 5, 1)
+
+  const invoices = await db.invoice.findMany({
+    where: { issueDate: { gte: sixMonthsAgo } },
+    select: { issueDate: true, total: true, status: true },
+    orderBy: { issueDate: "asc" }
+  })
+
+  const months = []
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(today.getFullYear(), today.getMonth() - 5 + i, 1)
+    months.push({
+      month: d.toLocaleString('it-IT', { month: 'short' }),
+      year: d.getFullYear(),
+      monthIndex: d.getMonth(),
+      fatturato: 0,
+      daIncassare: 0
+    })
+  }
+
+  for (const inv of invoices) {
+    const m = inv.issueDate.getMonth()
+    const y = inv.issueDate.getFullYear()
+    const match = months.find(x => x.monthIndex === m && x.year === y)
+    if (match) {
+      match.fatturato += Number(inv.total)
+      if (inv.status !== "PAID" && inv.status !== "CANCELLED") {
+        match.daIncassare += Number(inv.total)
+      }
+    }
+  }
+
+  const revenueData = months.map(m => ({
+    name: m.month,
+    Fatturato: m.fatturato,
+    "Da Incassare": m.daIncassare
+  }))
+
+  // 2. Top Clienti (basato su ordini confermati negli ultimi 3 mesi)
+  const threeMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 3, 1)
+  const topCustomersData = await db.order.groupBy({
+    by: ['customerId'],
+    where: { 
+      orderDate: { gte: threeMonthsAgo },
+      status: { notIn: ['CANCELLED'] }
+    },
+    _sum: { total: true },
+    orderBy: { _sum: { total: 'desc' } },
+    take: 5
+  })
+
+  // Popola con i nomi
+  const topCustomersDetailed = await Promise.all(
+    topCustomersData.map(async (tc) => {
+      if (!tc.customerId) return null
+      const customer = await db.customer.findUnique({ where: { id: tc.customerId }, select: { companyName: true } })
+      return {
+        name: customer?.companyName || "Sconosciuto",
+        value: Number(tc._sum.total) || 0
+      }
+    })
+  )
+
+  const topCustomers = topCustomersDetailed.filter(Boolean)
+
+  // 3. Proporzione Prodotti (Top 5 venduti)
+  const topProductsData = await db.orderItem.groupBy({
+    by: ['productId', 'productName'],
+    where: { 
+      order: { orderDate: { gte: threeMonthsAgo }, status: { notIn: ['CANCELLED'] } }
+    },
+    _sum: { lineTotal: true },
+    orderBy: { _sum: { lineTotal: 'desc' } },
+    take: 5
+  })
+  
+  const topProducts = topProductsData.map(tp => ({
+    name: tp.productName || "Sconosciuto",
+    value: Number(tp._sum.lineTotal) || 0
+  }))
+
+  return serialize({
+    revenueData,
+    topCustomers,
+    topProducts
+  })
+}

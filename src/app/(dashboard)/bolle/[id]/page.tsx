@@ -216,7 +216,7 @@ export default function BollaDetailPage({ params }: { params: Promise<{ id: stri
                 </Button>
               </Link>
             )}
-            <Button variant="outline" onClick={() => addToast({ type: "info", title: "Stampa in corso..." })}>
+            <Button variant="outline" onClick={() => window.open(`/api/delivery-notes/${ddt.id}/pdf`, '_blank')}>
               <Printer className="h-4 w-4" strokeWidth={1.75} />
               Stampa DDT
             </Button>

@@ -11,6 +11,7 @@ import { useParams } from "next/navigation"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { ArrowLeft, FileText, CreditCard, Loader2, Download } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { getPortalInvoice } from "@/lib/actions"
 import {
   INVOICE_STATUS_LABELS, INVOICE_STATUS_COLORS,
@@ -68,19 +69,24 @@ export default function PortalInvoiceDetailPage() {
   return (
     <motion.div initial="hidden" animate="show" className="space-y-6 max-w-4xl">
       {/* Header */}
-      <motion.div variants={fadeUp} className="flex items-center gap-3">
-        <Link href="/portale/fatture" className="flex h-9 w-9 items-center justify-center rounded-xl hover:bg-muted transition-colors">
-          <ArrowLeft className="h-5 w-5" strokeWidth={1.75} />
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold tracking-tight">Fattura {invoice.invoiceNumber}</h1>
-          <p className="text-muted-foreground mt-0.5">
-            Emessa il {formatDate(invoice.issueDate)}
-          </p>
+      <motion.div variants={fadeUp} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <Link href="/portale/fatture" className="flex h-9 w-9 items-center justify-center rounded-xl hover:bg-muted transition-colors">
+            <ArrowLeft className="h-5 w-5" strokeWidth={1.75} />
+          </Link>
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold tracking-tight">Fattura {invoice.invoiceNumber}</h1>
+            <p className="text-muted-foreground mt-0.5">
+              Emessa il {formatDate(invoice.issueDate)}
+            </p>
+          </div>
+          <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${INVOICE_STATUS_COLORS[invoice.status] || ""}`}>
+            {INVOICE_STATUS_LABELS[invoice.status] || invoice.status}
+          </span>
         </div>
-        <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${INVOICE_STATUS_COLORS[invoice.status] || ""}`}>
-          {INVOICE_STATUS_LABELS[invoice.status] || invoice.status}
-        </span>
+        <Button onClick={() => window.open(`/api/invoices/${invoice.id}/pdf`, '_blank')} className="w-full sm:w-auto shrink-0">
+          <Download className="mr-2 h-4 w-4" /> Download PDF
+        </Button>
       </motion.div>
 
       {/* Info cards */}

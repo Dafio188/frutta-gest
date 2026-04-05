@@ -9,7 +9,7 @@
 import { useEffect, useState, useCallback } from "react"
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { Search, FileText, Loader2 } from "lucide-react"
+import { Search, FileText, Loader2, Download } from "lucide-react"
 import { getPortalInvoices } from "@/lib/actions"
 import { INVOICE_STATUS_LABELS, INVOICE_STATUS_COLORS } from "@/lib/constants"
 import { Button } from "@/components/ui/button"
@@ -118,6 +118,7 @@ export default function PortalInvoicesPage() {
                     <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Stato</th>
                     <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider text-right hidden sm:table-cell">Pagato</th>
                     <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider text-right">Totale</th>
+                    <th className="px-4 py-3 w-10"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -148,6 +149,11 @@ export default function PortalInvoicesPage() {
                         </td>
                         <td className="px-4 py-3 text-sm font-medium text-right">
                           {formatCurrency(total)}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.preventDefault(); window.open(`/api/invoices/${inv.id}/pdf`, '_blank'); }}>
+                            <Download className="h-4 w-4" />
+                          </Button>
                         </td>
                       </tr>
                     )

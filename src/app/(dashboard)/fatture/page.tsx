@@ -77,7 +77,7 @@ export default function FatturePage() {
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); router.push(`/fatture/${item.id}`) }}>
             <Eye className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); window.open(`/api/invoices/${item.id}/pdf`, '_blank'); }}>
             <Download className="h-4 w-4" />
           </Button>
         </div>

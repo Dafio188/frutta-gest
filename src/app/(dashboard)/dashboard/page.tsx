@@ -19,8 +19,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { formatCurrency, formatDate } from "@/lib/utils"
-import { getDashboardKPIs, getRecentActivity } from "@/lib/actions"
+import { getDashboardKPIs, getRecentActivity, getDashboardChartsData } from "@/lib/actions"
 import type { DashboardKPI } from "@/types"
+import { DashboardCharts } from "@/components/dashboard/dashboard-charts"
 
 const stagger = {
   hidden: { opacity: 0 },
@@ -66,17 +67,20 @@ interface ActivityItem {
 export default function DashboardPage() {
   const [kpis, setKpis] = useState<DashboardKPI | null>(null)
   const [activities, setActivities] = useState<ActivityItem[]>([])
+  const [chartsData, setChartsData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      const [kpiData, activityData] = await Promise.all([
+      const [kpiData, activityData, charts] = await Promise.all([
         getDashboardKPIs(),
         getRecentActivity(10),
+        getDashboardChartsData(),
       ])
       setKpis(kpiData as unknown as DashboardKPI)
       setActivities(activityData as unknown as ActivityItem[])
+      setChartsData(charts)
     } catch (err) {
       console.error("Errore caricamento dashboard:", err)
     } finally {
@@ -189,6 +193,21 @@ export default function DashboardPage() {
           </motion.div>
         ))}
       </div>
+
+      {/* Recharts Dashboard (New) */}
+      {!loading && chartsData && (
+        <DashboardCharts data={chartsData} />
+      )}
+
+      {loading && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Skeleton className="h-[400px] lg:col-span-2 rounded-xl" />
+          <div className="flex flex-col gap-6">
+            <Skeleton className="h-[180px] rounded-xl" />
+            <Skeleton className="h-[180px] rounded-xl" />
+          </div>
+        </div>
+      )}
 
       {/* Quick Actions */}
       <motion.div variants={fadeUp}>

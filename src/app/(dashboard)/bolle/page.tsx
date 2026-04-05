@@ -74,7 +74,7 @@ export default function BollePage() {
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); router.push(`/bolle/${item.id}`) }}>
             <Eye className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); /* download PDF */ }}>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); window.open(`/api/delivery-notes/${item.id}/pdf`, '_blank'); }}>
             <FileDown className="h-4 w-4" />
           </Button>
         </div>
