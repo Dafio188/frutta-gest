@@ -11,7 +11,7 @@
 
 import { revalidatePath } from "next/cache"
 import { randomUUID } from "crypto"
-import { auth } from "@/lib/auth"
+import { auth, signIn } from "@/lib/auth"
 import { getCurrentDb, isMasterContext } from "@/lib/tenant-context"
 import { sendEmail } from "@/lib/email"
 import { getNextNumber } from "@/lib/number-sequence"
@@ -3771,6 +3771,11 @@ export async function getMarginReport() {
 
 // DASHBOARD
 // ============================================================
+
+// --- AUTHENTICATION ACTIONS ---
+export async function ssoGoogleLogin(callbackUrl?: string) {
+  await signIn("google", { redirectTo: callbackUrl || "/dashboard" })
+}
 
 export async function getDashboardKPIs() {
   const session = await requireAuth()
