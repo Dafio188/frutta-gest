@@ -23,6 +23,7 @@ export default function AuthUnified({ initialMode = "login", tenantLogo }: AuthU
   const router = useRouter()
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard"
+  const urlError = searchParams.get("error")
   const [mode, setMode] = useState<"login" | "register" | "forgot">(initialMode)
   
   // Transition logic
@@ -263,9 +264,9 @@ export default function AuthUnified({ initialMode = "login", tenantLogo }: AuthU
                        )}
                      </motion.div>
                      <h1 className="text-3xl font-bold tracking-tight">Bentornato</h1>
-                     <p className="text-muted-foreground mt-1">Accedi per gestire la tua filieria.</p>
+                     <p className="text-muted-foreground mt-1">Accedi per gestire la tua filiera.</p>
                   </div>
-                  <LoginForm callbackUrl={callbackUrl} onForgot={goToForgot} />
+                  <LoginForm callbackUrl={callbackUrl} urlError={urlError} onForgot={goToForgot} />
                 </motion.div>
               ) : mode === "forgot" ? (
                 <motion.div
@@ -334,13 +335,24 @@ export default function AuthUnified({ initialMode = "login", tenantLogo }: AuthU
   )
 }
 
-function LoginForm({ callbackUrl, onForgot }: { callbackUrl: string, onForgot: () => void }) {
+function LoginForm({ callbackUrl, urlError, onForgot }: { callbackUrl: string, urlError?: string | null, onForgot: () => void }) {
   const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+
+  // Converti urlError in messaggi leggibili
+  useEffect(() => {
+    if (urlError === "AccessDenied") {
+      setError("Accesso negato: questa email non fa parte del tenant.")
+    } else if (urlError === "Configuration") {
+      setError("Errore configurazione Server OAuth.")
+    } else if (urlError) {
+      setError("Autenticazione fallita riprova.")
+    }
+  }, [urlError])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

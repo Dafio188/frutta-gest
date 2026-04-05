@@ -125,6 +125,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user.email) {
         try {
           const email = user.email.toLowerCase();
+          const superAdminEmail = process.env.SUPER_ADMIN_EMAIL?.toLowerCase();
+          
+          if (email === superAdminEmail) {
+             console.log(`[AUTH DEBUG] SuperAdmin OAuth login bypassed DB check for slug`);
+             user.role = "ADMIN"; // Forziamo un ruolo compatibile
+             return true;
+          }
+
           const { getTenantSlug, getCurrentDb } = await import("@/lib/tenant-context");
           const { masterDb } = await import("@/lib/master-db");
           const slug = await getTenantSlug();
