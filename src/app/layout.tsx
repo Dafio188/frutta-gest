@@ -14,13 +14,18 @@ const inter = Inter({
   variable: "--font-inter",
 })
 
+const siteUrl = "https://www.fruttagest.it"
+const siteName = "FruttaGest"
+const siteDescription =
+  "Gestionale completo per la vendita di prodotti ortofrutticoli a ristoranti e supermercati. Ordini, DDT, fatture, gestione finanziaria."
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: {
     default: "FruttaGest — Gestionale Ortofrutticolo",
     template: "%s | FruttaGest",
   },
-  description:
-    "Gestionale completo per la vendita di prodotti ortofrutticoli a ristoranti e supermercati. Ordini, DDT, fatture, gestione finanziaria.",
+  description: siteDescription,
   keywords: [
     "gestionale",
     "ortofrutticolo",
@@ -40,8 +45,41 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  openGraph: {
+    title: "FruttaGest — Gestionale Ortofrutticolo",
+    description: siteDescription,
+    url: siteUrl,
+    siteName: siteName,
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+      },
+    ],
+    locale: "it_IT",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "FruttaGest — Gestionale Ortofrutticolo",
+    description: siteDescription,
+    images: ["/og-image.png"],
+  },
+  alternates: {
+    canonical: siteUrl,
+  },
 }
 
+import {
+  SoftwareApplicationSchema,
+  OrganizationSchema,
+  FAQSchema,
+} from "@/components/json-ld-schemas"
 import { AuthProvider } from "@/providers/auth-provider"
 
 export default function RootLayout({
@@ -55,6 +93,9 @@ export default function RootLayout({
         <meta name="theme-color" content="#22c55e" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+        <SoftwareApplicationSchema />
+        <OrganizationSchema />
+        <FAQSchema />
       </head>
       <body className={`${inter.variable} font-sans antialiased`} suppressHydrationWarning>
         <AuthProvider>

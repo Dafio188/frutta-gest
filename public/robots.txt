@@ -1,0 +1,5 @@
+# FruttaGest — robots.txt
+User-agent: *
+Allow: /
+
+Sitemap: https://www.fruttagest.it/sitemap.xml
