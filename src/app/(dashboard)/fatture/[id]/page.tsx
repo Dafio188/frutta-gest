@@ -14,6 +14,7 @@ import Link from "next/link"
 import {
   ArrowLeft, FileText, User, MapPin, Phone, Mail, CreditCard,
   CheckCircle2, Clock, Send, Ban, AlertTriangle, Loader2, Truck, Trash2, Printer,
+  FileMinus,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -74,7 +75,7 @@ interface InvoiceData {
   payments: {
     id: string; amount: number; paymentDate: string; method: string; status: string; reference: string | null
   }[]
-  creditNotes: { id: string; creditNoteNumber: string; total: number; status: string }[]
+  creditNotes: { id: string; creditNoteNumber: string; issueDate: string; total: number; reason: string }[]
   createdBy: { id: string; name: string | null; email: string } | null
 }
 
@@ -173,6 +174,14 @@ export default function FatturaDettaglioPage({ params }: { params: Promise<{ id:
               <Printer className="h-4 w-4 mr-1" strokeWidth={1.75} />
               Stampa Fattura
             </Button>
+            {invoice.status !== "DRAFT" && invoice.status !== "CANCELLED" && (
+              <Link href={`/note-credito/nuova?invoiceId=${invoice.id}`}>
+                <Button variant="outline" size="sm">
+                  <FileMinus className="h-4 w-4 mr-1" strokeWidth={1.75} />
+                  Nota di Credito
+                </Button>
+              </Link>
+            )}
             {actions.map((action) => (
               <Button key={action.next} size="sm" onClick={() => handleStatusChange(action.next)} disabled={actionLoading}>
                 {actionLoading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <action.icon className="h-4 w-4 mr-1" strokeWidth={1.75} />}
@@ -380,6 +389,42 @@ export default function FatturaDettaglioPage({ params }: { params: Promise<{ id:
                           </Badge>
                         </div>
                       ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </StaggerItem>
+            )}
+
+            {/* Note di Credito */}
+            {invoice.creditNotes.length > 0 && (
+              <StaggerItem>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <FileMinus className="h-4 w-4" />Note di Credito
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {invoice.creditNotes.map((cn) => (
+                        <Link key={cn.id} href={`/note-credito/${cn.id}`} className="flex items-center justify-between p-3 rounded-xl border border-border/50 hover:bg-muted/30 transition-colors">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium">{cn.creditNoteNumber}</p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {formatDate(cn.issueDate)} — {cn.reason}
+                            </p>
+                          </div>
+                          <span className="text-sm font-medium text-red-600 dark:text-red-400 shrink-0">
+                            -{formatCurrency(cn.total)}
+                          </span>
+                        </Link>
+                      ))}
+                      <div className="flex justify-between px-3 pt-1 text-sm font-medium">
+                        <span>Netto fattura dopo accrediti</span>
+                        <span>
+                          {formatCurrency(invoice.total - invoice.creditNotes.reduce((s, cn) => s + cn.total, 0))}
+                        </span>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

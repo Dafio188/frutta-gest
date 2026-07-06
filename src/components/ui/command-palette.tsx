@@ -6,7 +6,7 @@ import { Command } from "cmdk"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   LayoutDashboard, ShoppingCart, ClipboardList, Truck, Apple, Building2,
-  Factory, FileText, CreditCard, TrendingUp, Settings, Search, Plus,
+  Factory, FileText, FileMinus, CreditCard, TrendingUp, Settings, Search, Plus,
 } from "lucide-react"
 import { useUIStore } from "@/stores/ui-store"
 import { cn } from "@/lib/utils"
@@ -23,6 +23,7 @@ const commands = [
     { label: "Ordini Fornitore", icon: ShoppingCart, href: "/acquisti" },
     { label: "Fatture Fornitore", icon: FileText, href: "/acquisti/fatture" },
     { label: "Fatture", icon: FileText, href: "/fatture" },
+    { label: "Note di Credito", icon: FileMinus, href: "/note-credito" },
     { label: "Pagamenti", icon: CreditCard, href: "/finanza" },
     { label: "Report Vendite", icon: TrendingUp, href: "/report/vendite" },
     { label: "Impostazioni", icon: Settings, href: "/settings" },
@@ -32,6 +33,7 @@ const commands = [
     { label: "Nuovo Cliente", icon: Plus, href: "/clienti/nuovo" },
     { label: "Nuovo Fornitore", icon: Plus, href: "/fornitori/nuovo" },
     { label: "Nuova Fattura", icon: Plus, href: "/fatture/nuova" },
+    { label: "Nuova Nota di Credito", icon: Plus, href: "/note-credito/nuova" },
     { label: "Nuovo Ordine Fornitore", icon: Plus, href: "/acquisti/nuovo" },
     { label: "Nuova Fattura Fornitore", icon: Plus, href: "/acquisti/fatture/nuova" },
   ]},

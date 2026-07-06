@@ -70,9 +70,9 @@ export default auth(async (req) => {
   }
 
   // 3. Protezione Area Privata (Dashboard dei clienti e operatori vari)
-  const isPrivateRoute = 
-    pathname.startsWith("/dashboard") || 
-    pathname.startsWith("/settings") || 
+  const isPrivateRoute =
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/settings") ||
     pathname.startsWith("/profile") ||
     pathname.startsWith("/notifiche") ||
     pathname.startsWith("/ordini") ||
@@ -80,7 +80,15 @@ export default auth(async (req) => {
     pathname.startsWith("/clienti") ||
     pathname.startsWith("/fornitori") ||
     pathname.startsWith("/portale") ||
-    pathname.startsWith("/fatture");
+    pathname.startsWith("/fatture") ||
+    pathname.startsWith("/note-credito") ||
+    pathname.startsWith("/bolle") ||
+    pathname.startsWith("/catalogo") ||
+    pathname.startsWith("/acquisti") ||
+    pathname.startsWith("/magazzino") ||
+    pathname.startsWith("/lista-spesa") ||
+    pathname.startsWith("/report") ||
+    pathname.startsWith("/admin");
   
   if (isPrivateRoute) {
     const isLoggedIn = !!req.auth?.user;

@@ -87,6 +87,8 @@ const ACTION_LABELS: Record<string, string> = {
   CREATE_INVOICE: "Fattura creata",
   UPDATE_INVOICE_STATUS: "Stato fattura aggiornato",
   DELETE_INVOICE: "Fattura eliminata",
+  CREATE_CREDIT_NOTE: "Nota di credito creata",
+  DELETE_CREDIT_NOTE: "Nota di credito eliminata",
   CREATE_DDT: "DDT creato",
   UPDATE_DDT: "DDT aggiornato",
   UPDATE_DDT_STATUS: "Stato DDT aggiornato",

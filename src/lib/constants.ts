@@ -312,6 +312,7 @@ export const SIDEBAR_NAV = [
     title: "Gestione Clienti",
     items: [
       { label: "Fatture", href: "/fatture", icon: "FileText" },
+      { label: "Note di Credito", href: "/note-credito", icon: "FileMinus" },
       { label: "Pagamenti", href: "/finanza", icon: "CreditCard" },
       { label: "Scadenzario", href: "/finanza/scadenzario", icon: "Calendar" },
     ],

@@ -22,6 +22,7 @@ import {
   orderSchema,
   deliveryNoteSchema,
   invoiceSchema,
+  creditNoteSchema,
   paymentSchema,
   companyInfoSchema,
   purchaseOrderSchema,
@@ -5808,4 +5809,212 @@ export async function getActivityStats() {
     totalActions,
     availableActions: distinctActions.map((a) => a.action),
   }
+}
+
+// ============================================================
+// NOTE DI CREDITO
+// ============================================================
+
+export async function getCreditNotes(params: PaginationParams = {}) {
+  await requireAuth()
+  const db = await getCurrentDb()
+
+  const {
+    page = 1,
+    pageSize = 20,
+    search = "",
+    sortBy = "issueDate",
+    sortOrder = "desc",
+  } = params
+
+  const where: Prisma.CreditNoteWhereInput = search
+    ? {
+        OR: [
+          { creditNoteNumber: { contains: search, mode: "insensitive" } },
+          { reason: { contains: search, mode: "insensitive" } },
+          { customer: { companyName: { contains: search, mode: "insensitive" } } },
+          { invoice: { invoiceNumber: { contains: search, mode: "insensitive" } } },
+        ],
+      }
+    : {}
+
+  const [data, total] = await Promise.all([
+    db.creditNote.findMany({
+      where,
+      include: {
+        customer: { select: { id: true, companyName: true } },
+        invoice: { select: { id: true, invoiceNumber: true, total: true } },
+      },
+      orderBy: { [sortBy]: sortOrder },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    db.creditNote.count({ where }),
+  ])
+
+  return serialize({
+    data,
+    total,
+    page,
+    pageSize,
+    totalPages: Math.ceil(total / pageSize),
+  })
+}
+
+export async function getCreditNote(id: string) {
+  await requireAuth()
+  const db = await getCurrentDb()
+
+  const creditNote = await db.creditNote.findUnique({
+    where: { id },
+    include: {
+      customer: {
+        select: {
+          id: true, companyName: true, vatNumber: true, fiscalCode: true,
+          address: true, city: true, province: true, postalCode: true,
+          phone: true, email: true, sdiCode: true, pecEmail: true,
+        },
+      },
+      invoice: {
+        select: {
+          id: true, invoiceNumber: true, issueDate: true, subtotal: true,
+          vatAmount: true, total: true, status: true,
+          creditNotes: { select: { id: true, total: true } },
+        },
+      },
+    },
+  })
+
+  if (!creditNote) throw new Error("Nota di credito non trovata")
+  return serialize(creditNote)
+}
+
+export async function createCreditNote(data: unknown) {
+  const session = await requireAuth()
+  const db = await getCurrentDb()
+
+  const parsed = creditNoteSchema.parse(data)
+
+  const invoice = await db.invoice.findUnique({
+    where: { id: parsed.invoiceId },
+    include: { creditNotes: { select: { total: true } } },
+  })
+  if (!invoice) throw new Error("Fattura non trovata")
+  if (invoice.status === "DRAFT" || invoice.status === "CANCELLED") {
+    throw new Error("Non è possibile emettere una nota di credito su una fattura in bozza o annullata")
+  }
+
+  const total = Math.round((parsed.amount + parsed.vatAmount) * 100) / 100
+
+  // Il totale delle note di credito non può superare il totale della fattura
+  const alreadyCredited = invoice.creditNotes.reduce((sum, cn) => sum + Number(cn.total), 0)
+  const creditable = Number(invoice.total) - alreadyCredited
+  if (total > creditable + 0.005) {
+    throw new Error(
+      `L'importo supera il residuo accreditabile della fattura (${creditable.toFixed(2)} €)`
+    )
+  }
+
+  const creditNoteNumber = await getNextNumber("CREDIT_NOTE")
+
+  const creditNote = await db.creditNote.create({
+    data: {
+      creditNoteNumber,
+      invoiceId: invoice.id,
+      customerId: invoice.customerId,
+      issueDate: parsed.issueDate,
+      amount: parsed.amount,
+      vatAmount: parsed.vatAmount,
+      total,
+      reason: parsed.reason,
+    },
+    include: {
+      customer: { select: { id: true, companyName: true } },
+      invoice: { select: { id: true, invoiceNumber: true } },
+    },
+  })
+
+  await logActivity(session.user.id, "CREATE_CREDIT_NOTE", "CreditNote", creditNote.id, {
+    numero: creditNoteNumber,
+    fattura: creditNote.invoice.invoiceNumber,
+    cliente: creditNote.customer.companyName,
+    totale: total,
+    motivo: parsed.reason,
+  })
+
+  revalidatePath("/note-credito")
+  revalidatePath(`/fatture/${invoice.id}`)
+  return serialize(creditNote)
+}
+
+export async function deleteCreditNote(id: string) {
+  const session = await requireAuth()
+  const db = await getCurrentDb()
+
+  const creditNote = await db.creditNote.findUnique({
+    where: { id },
+    include: { invoice: { select: { id: true, invoiceNumber: true } } },
+  })
+  if (!creditNote) throw new Error("Nota di credito non trovata")
+
+  await db.creditNote.delete({ where: { id } })
+
+  await logActivity(session.user.id, "DELETE_CREDIT_NOTE", "CreditNote", id, {
+    numero: creditNote.creditNoteNumber,
+    fattura: creditNote.invoice.invoiceNumber,
+    totale: Number(creditNote.total),
+  })
+
+  revalidatePath("/note-credito")
+  revalidatePath(`/fatture/${creditNote.invoice.id}`)
+  return { success: true }
+}
+
+/**
+ * Fatture su cui è possibile emettere una nota di credito
+ * (emesse/inviate/pagate/scadute, con residuo accreditabile > 0)
+ */
+export async function getCreditableInvoices(search: string = "") {
+  await requireAuth()
+  const db = await getCurrentDb()
+
+  const invoices = await db.invoice.findMany({
+    where: {
+      status: { in: ["ISSUED", "SENT", "PAID", "OVERDUE"] },
+      ...(search
+        ? {
+            OR: [
+              { invoiceNumber: { contains: search, mode: "insensitive" } },
+              { customer: { companyName: { contains: search, mode: "insensitive" } } },
+            ],
+          }
+        : {}),
+    },
+    include: {
+      customer: { select: { id: true, companyName: true } },
+      creditNotes: { select: { total: true } },
+    },
+    orderBy: { issueDate: "desc" },
+    take: 50,
+  })
+
+  return serialize(
+    invoices
+      .map((inv) => {
+        const credited = inv.creditNotes.reduce((sum, cn) => sum + Number(cn.total), 0)
+        return {
+          id: inv.id,
+          invoiceNumber: inv.invoiceNumber,
+          issueDate: inv.issueDate,
+          subtotal: Number(inv.subtotal),
+          vatAmount: Number(inv.vatAmount),
+          total: Number(inv.total),
+          status: inv.status,
+          customer: inv.customer,
+          credited,
+          creditable: Math.round((Number(inv.total) - credited) * 100) / 100,
+        }
+      })
+      .filter((inv) => inv.creditable > 0)
+  )
 }

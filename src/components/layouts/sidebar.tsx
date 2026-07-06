@@ -13,7 +13,7 @@ import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   LayoutDashboard, ShoppingCart, ClipboardList, Truck,
-  Apple, Building2, Factory, FileText, CreditCard, Calendar,
+  Apple, Building2, Factory, FileText, FileMinus, CreditCard, Calendar,
   TrendingUp, BarChart3, PieChart, Settings, LogOut, ChevronLeft,
   Menu, Leaf, Warehouse, Shield, Users, Activity
 } from "lucide-react"
@@ -24,7 +24,7 @@ import { SIDEBAR_NAV } from "@/lib/constants"
 
 const iconMap: Record<string, React.ElementType> = {
   LayoutDashboard, ShoppingCart, ClipboardList, Truck,
-  Apple, Building2, Factory, FileText, CreditCard, Calendar,
+  Apple, Building2, Factory, FileText, FileMinus, CreditCard, Calendar,
   TrendingUp, BarChart3, PieChart, Leaf, Warehouse,
 }
 

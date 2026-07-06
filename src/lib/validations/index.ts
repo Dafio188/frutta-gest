@@ -178,6 +178,18 @@ export const invoiceSchema = z.object({
 })
 
 // ============================================================
+// NOTE DI CREDITO
+// ============================================================
+
+export const creditNoteSchema = z.object({
+  invoiceId: z.string().min(1, "Seleziona una fattura"),
+  issueDate: z.coerce.date().default(() => new Date()),
+  amount: z.coerce.number().min(0.01, "L'imponibile deve essere maggiore di 0"),
+  vatAmount: z.coerce.number().min(0, "L'IVA non può essere negativa"),
+  reason: z.string().min(3, "Inserisci il motivo della nota di credito"),
+})
+
+// ============================================================
 // PAGAMENTI
 // ============================================================
 
@@ -260,6 +272,7 @@ export type OrderInput = z.infer<typeof orderSchema>
 export type OrderItemInput = z.infer<typeof orderItemSchema>
 export type DeliveryNoteInput = z.infer<typeof deliveryNoteSchema>
 export type InvoiceInput = z.infer<typeof invoiceSchema>
+export type CreditNoteInput = z.infer<typeof creditNoteSchema>
 export type PaymentInput = z.infer<typeof paymentSchema>
 export type CompanyInfoInput = z.infer<typeof companyInfoSchema>
 export type PurchaseOrderInput = z.infer<typeof purchaseOrderSchema>

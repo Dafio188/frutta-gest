@@ -7,7 +7,7 @@
 
 import { getCurrentDb } from "@/lib/tenant-context"
 
-type SequenceType = "ORDER" | "DDT" | "INVOICE" | "CUSTOMER" | "SUPPLIER" | "PURCHASE_ORDER" | "SUPPLIER_INVOICE"
+type SequenceType = "ORDER" | "DDT" | "INVOICE" | "CUSTOMER" | "SUPPLIER" | "PURCHASE_ORDER" | "SUPPLIER_INVOICE" | "CREDIT_NOTE"
 
 const PREFIXES: Record<SequenceType, string> = {
   ORDER: "ORD",
@@ -17,6 +17,7 @@ const PREFIXES: Record<SequenceType, string> = {
   SUPPLIER: "FOR",
   PURCHASE_ORDER: "OA",
   SUPPLIER_INVOICE: "FT-FORN",
+  CREDIT_NOTE: "NC",
 }
 
 /**
