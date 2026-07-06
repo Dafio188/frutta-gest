@@ -2,21 +2,22 @@
  * Report Vendite
  *
  * Dashboard analitica con KPI di fatturato, grafico a barre animato,
- * selettore periodo, top 10 prodotti e top 10 clienti.
+ * selettore periodo, top 10 prodotti e top 10 clienti — dati reali dal DB.
  */
 
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { motion } from "framer-motion"
 import {
   TrendingUp, TrendingDown, ShoppingCart, Users, Receipt,
-  BarChart3, Crown,
+  BarChart3, Crown, Loader2,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { PageTransition } from "@/components/animations/page-transition"
-import { formatCurrency } from "@/lib/utils"
+import { formatCurrency, formatNumber } from "@/lib/utils"
+import { PRODUCT_UNIT_LABELS } from "@/lib/constants"
+import { getSalesReport } from "@/lib/actions"
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -45,82 +46,102 @@ const PERIOD_LABELS: Record<Period, string> = {
   "1y": "1 anno",
 }
 
-// Mock data per il grafico mensile
-const MOCK_MONTHLY_DATA = [
-  { label: "Gen", value: 12400 },
-  { label: "Feb", value: 18200 },
-  { label: "Mar", value: 15600 },
-  { label: "Apr", value: 22100 },
-  { label: "Mag", value: 19800 },
-  { label: "Giu", value: 24500 },
-  { label: "Lug", value: 21300 },
-  { label: "Ago", value: 16700 },
-  { label: "Set", value: 23900 },
-  { label: "Ott", value: 27100 },
-  { label: "Nov", value: 25400 },
-  { label: "Dic", value: 29800 },
-]
+const PERIOD_DAYS: Record<Period, number> = {
+  "7d": 7,
+  "30d": 30,
+  "90d": 90,
+  "1y": 365,
+}
 
-const MOCK_TOP_PRODUCTS = [
-  { name: "Pomodori San Marzano", quantity: 1240, revenue: 3720, unit: "Kg" },
-  { name: "Mele Golden", quantity: 980, revenue: 2940, unit: "Kg" },
-  { name: "Zucchine", quantity: 860, revenue: 2150, unit: "Kg" },
-  { name: "Arance Tarocco", quantity: 750, revenue: 1875, unit: "Kg" },
-  { name: "Lattuga Romana", quantity: 620, revenue: 1240, unit: "Pz" },
-  { name: "Peperoni Rossi", quantity: 580, revenue: 1740, unit: "Kg" },
-  { name: "Basilico Fresco", quantity: 540, revenue: 1620, unit: "Mazzo" },
-  { name: "Limoni Amalfi", quantity: 480, revenue: 1440, unit: "Kg" },
-  { name: "Carote", quantity: 420, revenue: 840, unit: "Kg" },
-  { name: "Melanzane", quantity: 380, revenue: 950, unit: "Kg" },
-]
+interface SalesReport {
+  kpis: {
+    revenue: number
+    revenueChange: number | null
+    orders: number
+    ordersChange: number | null
+    avgOrder: number
+    avgOrderChange: number | null
+  }
+  chart: { label: string; value: number }[]
+  topProducts: { productId: string; productName: string; totalQuantity: number; totalRevenue: number; unit: string }[]
+  topCustomers: { customerId: string; customerName: string; totalOrders: number; totalRevenue: number }[]
+}
 
-const MOCK_TOP_CUSTOMERS = [
-  { name: "Ristorante Da Mario", orders: 45, revenue: 12500 },
-  { name: "Trattoria Il Borgo", orders: 38, revenue: 10200 },
-  { name: "Hotel Villa Rosa", orders: 32, revenue: 9800 },
-  { name: "Pizzeria Napoletana", orders: 28, revenue: 7600 },
-  { name: "Bar Centrale", orders: 25, revenue: 5400 },
-  { name: "Mensa Universitaria", orders: 22, revenue: 8900 },
-  { name: "Gastronomia Sapori", orders: 20, revenue: 6100 },
-  { name: "Ristorante La Pergola", orders: 18, revenue: 5800 },
-  { name: "Supermercato FreshMart", orders: 15, revenue: 4200 },
-  { name: "Hotel Belvedere", orders: 12, revenue: 3900 },
-]
+function ChangeIndicator({ change }: { change: number | null }) {
+  if (change === null) {
+    return <span className="text-sm text-muted-foreground mt-2 block">— vs periodo prec.</span>
+  }
+  const positive = change >= 0
+  return (
+    <div
+      className={`flex items-center gap-1 mt-2 text-sm ${
+        positive ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"
+      }`}
+    >
+      {positive ? (
+        <TrendingUp className="h-4 w-4" strokeWidth={1.75} />
+      ) : (
+        <TrendingDown className="h-4 w-4" strokeWidth={1.75} />
+      )}
+      <span>
+        {positive ? "+" : ""}
+        {change}%
+      </span>
+      <span className="text-muted-foreground ml-1">vs periodo prec.</span>
+    </div>
+  )
+}
 
 export default function ReportVenditePage() {
   const [period, setPeriod] = useState<Period>("30d")
+  const [loading, setLoading] = useState(true)
+  const [report, setReport] = useState<SalesReport | null>(null)
 
-  const maxBarValue = Math.max(...MOCK_MONTHLY_DATA.map((d) => d.value))
+  const loadReport = useCallback(async () => {
+    try {
+      setLoading(true)
+      const result = await getSalesReport(PERIOD_DAYS[period])
+      setReport(result as unknown as SalesReport)
+    } catch {} finally {
+      setLoading(false)
+    }
+  }, [period])
 
-  const kpis = [
-    {
-      label: "Fatturato Periodo",
-      value: formatCurrency(45230.5),
-      change: 12.5,
-      positive: true,
-      icon: Receipt,
-      color: "text-emerald-600 dark:text-emerald-400",
-      bg: "bg-emerald-100 dark:bg-emerald-900/30",
-    },
-    {
-      label: "Ordini Totali",
-      value: "156",
-      change: 8.2,
-      positive: true,
-      icon: ShoppingCart,
-      color: "text-blue-600 dark:text-blue-400",
-      bg: "bg-blue-100 dark:bg-blue-900/30",
-    },
-    {
-      label: "Scontrino Medio",
-      value: formatCurrency(290.0),
-      change: -3.1,
-      positive: false,
-      icon: BarChart3,
-      color: "text-purple-600 dark:text-purple-400",
-      bg: "bg-purple-100 dark:bg-purple-900/30",
-    },
-  ]
+  useEffect(() => { loadReport() }, [loadReport])
+
+  const chart = report?.chart ?? []
+  const maxBarValue = Math.max(1, ...chart.map((d) => d.value))
+  const hasChartData = chart.some((d) => d.value > 0)
+  const showBarLabels = chart.length <= 14
+
+  const kpis = report
+    ? [
+        {
+          label: "Fatturato Periodo",
+          value: formatCurrency(report.kpis.revenue),
+          change: report.kpis.revenueChange,
+          icon: Receipt,
+          color: "text-emerald-600 dark:text-emerald-400",
+          bg: "bg-emerald-100 dark:bg-emerald-900/30",
+        },
+        {
+          label: "Ordini Totali",
+          value: formatNumber(report.kpis.orders),
+          change: report.kpis.ordersChange,
+          icon: ShoppingCart,
+          color: "text-blue-600 dark:text-blue-400",
+          bg: "bg-blue-100 dark:bg-blue-900/30",
+        },
+        {
+          label: "Ordine Medio",
+          value: formatCurrency(report.kpis.avgOrder),
+          change: report.kpis.avgOrderChange,
+          icon: BarChart3,
+          color: "text-purple-600 dark:text-purple-400",
+          bg: "bg-purple-100 dark:bg-purple-900/30",
+        },
+      ]
+    : []
 
   return (
     <PageTransition>
@@ -150,185 +171,200 @@ export default function ReportVenditePage() {
           </div>
         </div>
 
-        {/* KPI Cards */}
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="show"
-          className="grid grid-cols-1 sm:grid-cols-3 gap-4"
-        >
-          {kpis.map((kpi, i) => (
-            <motion.div key={i} variants={itemVariants}>
-              <Card className="relative overflow-hidden">
-                <CardContent className="p-5">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">{kpi.label}</p>
-                      <p className="text-2xl font-bold mt-1 tracking-tight">{kpi.value}</p>
-                      <div
-                        className={`flex items-center gap-1 mt-2 text-sm ${
-                          kpi.positive ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"
-                        }`}
-                      >
-                        {kpi.positive ? (
-                          <TrendingUp className="h-4 w-4" strokeWidth={1.75} />
-                        ) : (
-                          <TrendingDown className="h-4 w-4" strokeWidth={1.75} />
-                        )}
-                        <span>
-                          {kpi.positive ? "+" : ""}
-                          {kpi.change}%
-                        </span>
-                        <span className="text-muted-foreground ml-1">vs periodo prec.</span>
+        {loading ? (
+          <div className="flex items-center justify-center py-32">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <>
+            {/* KPI Cards */}
+            <motion.div
+              variants={containerVariants}
+              initial="hidden"
+              animate="show"
+              className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+            >
+              {kpis.map((kpi, i) => (
+                <motion.div key={i} variants={itemVariants}>
+                  <Card className="relative overflow-hidden">
+                    <CardContent className="p-5">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="text-sm text-muted-foreground">{kpi.label}</p>
+                          <p className="text-2xl font-bold mt-1 tracking-tight">{kpi.value}</p>
+                          <ChangeIndicator change={kpi.change} />
+                        </div>
+                        <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${kpi.bg}`}>
+                          <kpi.icon className={`h-5 w-5 ${kpi.color}`} strokeWidth={1.75} />
+                        </div>
                       </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </motion.div>
+
+            {/* Bar Chart */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] as const, delay: 0.2 }}
+            >
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <BarChart3 className="h-5 w-5 text-primary" strokeWidth={1.75} />
+                    Andamento Fatturato
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {!hasChartData ? (
+                    <div className="flex items-center justify-center h-64 text-sm text-muted-foreground">
+                      Nessuna fattura emessa nel periodo selezionato
                     </div>
-                    <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${kpi.bg}`}>
-                      <kpi.icon className={`h-5 w-5 ${kpi.color}`} strokeWidth={1.75} />
+                  ) : (
+                    <div className="flex items-end gap-1.5 h-64">
+                      {chart.map((item, i) => {
+                        const heightPercent = (item.value / maxBarValue) * 100
+                        return (
+                          <div key={i} className="flex-1 flex flex-col items-center gap-2 min-w-0">
+                            {showBarLabels && (
+                              <span className="text-[10px] text-muted-foreground font-medium truncate max-w-full">
+                                {item.value > 0 ? formatCurrency(item.value).replace("EUR", "").replace(",00", "") : ""}
+                              </span>
+                            )}
+                            <motion.div
+                              className="w-full rounded-t-lg bg-primary/80 hover:bg-primary transition-colors cursor-pointer relative group"
+                              initial={{ height: 0 }}
+                              animate={{ height: `${Math.max(heightPercent, item.value > 0 ? 2 : 0)}%` }}
+                              transition={{
+                                duration: 0.6,
+                                delay: i * 0.03,
+                                ease: [0.23, 1, 0.32, 1] as const,
+                              }}
+                            >
+                              <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-foreground text-background text-xs px-2 py-1 rounded-lg whitespace-nowrap z-10">
+                                {item.label}: {formatCurrency(item.value)}
+                              </div>
+                            </motion.div>
+                            <span className={`text-[10px] text-muted-foreground font-medium truncate max-w-full ${chart.length > 20 && i % 2 !== 0 ? "invisible" : ""}`}>
+                              {item.label}
+                            </span>
+                          </div>
+                        )
+                      })}
                     </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
             </motion.div>
-          ))}
-        </motion.div>
 
-        {/* Bar Chart */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] as const, delay: 0.2 }}
-        >
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <BarChart3 className="h-5 w-5 text-primary" strokeWidth={1.75} />
-                Andamento Fatturato Mensile
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-end gap-2 h-64">
-                {MOCK_MONTHLY_DATA.map((item, i) => {
-                  const heightPercent = (item.value / maxBarValue) * 100
-                  return (
-                    <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                      <span className="text-[10px] text-muted-foreground font-medium">
-                        {formatCurrency(item.value).replace("EUR", "").replace(",00", "")}
-                      </span>
-                      <motion.div
-                        className="w-full rounded-t-lg bg-primary/80 hover:bg-primary transition-colors cursor-pointer relative group"
-                        initial={{ height: 0 }}
-                        animate={{ height: `${heightPercent}%` }}
-                        transition={{
-                          duration: 0.6,
-                          delay: i * 0.05,
-                          ease: [0.23, 1, 0.32, 1] as const,
-                        }}
-                      >
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-foreground text-background text-xs px-2 py-1 rounded-lg whitespace-nowrap">
-                          {formatCurrency(item.value)}
-                        </div>
-                      </motion.div>
-                      <span className="text-xs text-muted-foreground font-medium">{item.label}</span>
-                    </div>
-                  )
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Top Products & Top Customers */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Top 10 Products */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] as const, delay: 0.3 }}
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Crown className="h-5 w-5 text-amber-500" strokeWidth={1.75} />
-                  Top 10 Prodotti
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {MOCK_TOP_PRODUCTS.map((product, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, x: -12 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.35 + i * 0.04, duration: 0.3, ease: [0.23, 1, 0.32, 1] as const }}
-                      className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-muted/50 transition-colors"
-                    >
-                      <span
-                        className={`flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold ${
-                          i < 3
-                            ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                            : "bg-muted text-muted-foreground"
-                        }`}
-                      >
-                        {i + 1}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{product.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {product.quantity} {product.unit}
-                        </p>
+            {/* Top Products & Top Customers */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Top 10 Products */}
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] as const, delay: 0.3 }}
+              >
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Crown className="h-5 w-5 text-amber-500" strokeWidth={1.75} />
+                      Top 10 Prodotti
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {(report?.topProducts.length ?? 0) === 0 ? (
+                      <p className="py-8 text-center text-sm text-muted-foreground">
+                        Nessun prodotto venduto nel periodo
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        {report!.topProducts.map((product, i) => (
+                          <motion.div
+                            key={product.productId}
+                            initial={{ opacity: 0, x: -12 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.35 + i * 0.04, duration: 0.3, ease: [0.23, 1, 0.32, 1] as const }}
+                            className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-muted/50 transition-colors"
+                          >
+                            <span
+                              className={`flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold ${
+                                i < 3
+                                  ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                                  : "bg-muted text-muted-foreground"
+                              }`}
+                            >
+                              {i + 1}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{product.productName}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {formatNumber(product.totalQuantity)} {PRODUCT_UNIT_LABELS[product.unit] ?? product.unit}
+                              </p>
+                            </div>
+                            <span className="text-sm font-semibold">{formatCurrency(product.totalRevenue)}</span>
+                          </motion.div>
+                        ))}
                       </div>
-                      <span className="text-sm font-semibold">{formatCurrency(product.revenue)}</span>
-                    </motion.div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
 
-          {/* Top 10 Customers */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] as const, delay: 0.35 }}
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Users className="h-5 w-5 text-blue-500" strokeWidth={1.75} />
-                  Top 10 Clienti
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {MOCK_TOP_CUSTOMERS.map((customer, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, x: -12 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.4 + i * 0.04, duration: 0.3, ease: [0.23, 1, 0.32, 1] as const }}
-                      className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-muted/50 transition-colors"
-                    >
-                      <span
-                        className={`flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold ${
-                          i < 3
-                            ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                            : "bg-muted text-muted-foreground"
-                        }`}
-                      >
-                        {i + 1}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{customer.name}</p>
-                        <p className="text-xs text-muted-foreground">{customer.orders} ordini</p>
+              {/* Top 10 Customers */}
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] as const, delay: 0.35 }}
+              >
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Users className="h-5 w-5 text-blue-500" strokeWidth={1.75} />
+                      Top 10 Clienti
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {(report?.topCustomers.length ?? 0) === 0 ? (
+                      <p className="py-8 text-center text-sm text-muted-foreground">
+                        Nessun ordine nel periodo
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        {report!.topCustomers.map((customer, i) => (
+                          <motion.div
+                            key={customer.customerId}
+                            initial={{ opacity: 0, x: -12 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.4 + i * 0.04, duration: 0.3, ease: [0.23, 1, 0.32, 1] as const }}
+                            className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-muted/50 transition-colors"
+                          >
+                            <span
+                              className={`flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold ${
+                                i < 3
+                                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                                  : "bg-muted text-muted-foreground"
+                              }`}
+                            >
+                              {i + 1}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{customer.customerName}</p>
+                              <p className="text-xs text-muted-foreground">{customer.totalOrders} ordini</p>
+                            </div>
+                            <span className="text-sm font-semibold">{formatCurrency(customer.totalRevenue)}</span>
+                          </motion.div>
+                        ))}
                       </div>
-                      <span className="text-sm font-semibold">{formatCurrency(customer.revenue)}</span>
-                    </motion.div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </div>
+          </>
+        )}
       </div>
     </PageTransition>
   )

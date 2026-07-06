@@ -2,14 +2,14 @@
  * Admin Activity Log — Log Attivita
  *
  * Pagina di audit trail per l'amministratore.
- * Mostra la cronologia di tutte le azioni degli utenti nel sistema,
+ * Mostra la cronologia di tutte le azioni degli utenti nel sistema (dati reali dal DB),
  * con filtri per tipo azione, ricerca e intervallo date.
  * Design macOS premium con animazioni staggerate.
  */
 
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { PageTransition } from "@/components/animations/page-transition"
 import { StaggerContainer, StaggerItem } from "@/components/animations/stagger-container"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -30,305 +30,109 @@ import {
   CreditCard,
   Settings as SettingsIcon,
   Shield,
-  Trash2,
+  Loader2,
 } from "lucide-react"
 import { formatDateTime } from "@/lib/utils"
+import { getActivityLogs, getActivityStats } from "@/lib/actions"
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-type ActionType =
-  | "LOGIN"
-  | "CREATE_ORDER"
-  | "UPDATE_CUSTOMER"
-  | "CREATE_PRODUCT"
-  | "CREATE_INVOICE"
-  | "CREATE_DDT"
-  | "UPDATE_SETTING"
-  | "DELETE_USER"
-  | "CREATE_PAYMENT"
-  | "UPDATE_ORDER_STATUS"
-
 interface ActivityLogEntry {
   id: string
-  userId: string
-  userName: string
-  userEmail: string
-  action: ActionType
-  entity: string
-  entityId: string
-  details: Record<string, unknown>
+  userId: string | null
+  action: string
+  entity: string | null
+  entityId: string | null
+  details: Record<string, unknown> | null
   createdAt: string
+  user: { id: string; name: string | null; email: string } | null
 }
 
-// ---------------------------------------------------------------------------
-// Mock Data — 20 activity log entries
-// ---------------------------------------------------------------------------
-
-const activityLogs: ActivityLogEntry[] = [
-  {
-    id: "log-001",
-    userId: "usr-001",
-    userName: "Marco Rossi",
-    userEmail: "marco.rossi@fruttagest.it",
-    action: "LOGIN",
-    entity: "Session",
-    entityId: "sess-101",
-    details: { ip: "192.168.1.10", browser: "Chrome 120" },
-    createdAt: "2026-02-13T08:15:00",
-  },
-  {
-    id: "log-002",
-    userId: "usr-002",
-    userName: "Laura Bianchi",
-    userEmail: "laura.bianchi@fruttagest.it",
-    action: "CREATE_ORDER",
-    entity: "Ordine",
-    entityId: "ord-450",
-    details: { cliente: "Supermercati Roma SRL", totale: 2450.0 },
-    createdAt: "2026-02-13T08:42:00",
-  },
-  {
-    id: "log-003",
-    userId: "usr-001",
-    userName: "Marco Rossi",
-    userEmail: "marco.rossi@fruttagest.it",
-    action: "UPDATE_CUSTOMER",
-    entity: "Cliente",
-    entityId: "cli-032",
-    details: { campo: "indirizzo", vecchio: "Via Roma 10", nuovo: "Via Roma 12" },
-    createdAt: "2026-02-13T09:05:00",
-  },
-  {
-    id: "log-004",
-    userId: "usr-003",
-    userName: "Giuseppe Verdi",
-    userEmail: "giuseppe.verdi@fruttagest.it",
-    action: "CREATE_PRODUCT",
-    entity: "Prodotto",
-    entityId: "prod-128",
-    details: { nome: "Mele Golden Bio", categoria: "Frutta" },
-    createdAt: "2026-02-13T09:30:00",
-  },
-  {
-    id: "log-005",
-    userId: "usr-002",
-    userName: "Laura Bianchi",
-    userEmail: "laura.bianchi@fruttagest.it",
-    action: "CREATE_INVOICE",
-    entity: "Fattura",
-    entityId: "fat-890",
-    details: { numero: "FAT-2026-00890", importo: 3200.5 },
-    createdAt: "2026-02-13T10:12:00",
-  },
-  {
-    id: "log-006",
-    userId: "usr-004",
-    userName: "Anna Conte",
-    userEmail: "anna.conte@fruttagest.it",
-    action: "CREATE_DDT",
-    entity: "DDT",
-    entityId: "ddt-345",
-    details: { numero: "DDT-2026-00345", destinazione: "Milano" },
-    createdAt: "2026-02-13T10:45:00",
-  },
-  {
-    id: "log-007",
-    userId: "usr-001",
-    userName: "Marco Rossi",
-    userEmail: "marco.rossi@fruttagest.it",
-    action: "UPDATE_SETTING",
-    entity: "Impostazione",
-    entityId: "set-iva",
-    details: { chiave: "aliquota_iva_default", vecchio: "22%", nuovo: "10%" },
-    createdAt: "2026-02-13T11:00:00",
-  },
-  {
-    id: "log-008",
-    userId: "usr-001",
-    userName: "Marco Rossi",
-    userEmail: "marco.rossi@fruttagest.it",
-    action: "DELETE_USER",
-    entity: "Utente",
-    entityId: "usr-099",
-    details: { utente_eliminato: "test@example.com", motivo: "Account di test" },
-    createdAt: "2026-02-13T11:30:00",
-  },
-  {
-    id: "log-009",
-    userId: "usr-002",
-    userName: "Laura Bianchi",
-    userEmail: "laura.bianchi@fruttagest.it",
-    action: "CREATE_PAYMENT",
-    entity: "Pagamento",
-    entityId: "pag-201",
-    details: { fattura: "FAT-2026-00890", importo: 3200.5, metodo: "Bonifico" },
-    createdAt: "2026-02-13T12:15:00",
-  },
-  {
-    id: "log-010",
-    userId: "usr-003",
-    userName: "Giuseppe Verdi",
-    userEmail: "giuseppe.verdi@fruttagest.it",
-    action: "UPDATE_ORDER_STATUS",
-    entity: "Ordine",
-    entityId: "ord-448",
-    details: { vecchio_stato: "In preparazione", nuovo_stato: "Spedito" },
-    createdAt: "2026-02-13T13:00:00",
-  },
-  {
-    id: "log-011",
-    userId: "usr-004",
-    userName: "Anna Conte",
-    userEmail: "anna.conte@fruttagest.it",
-    action: "LOGIN",
-    entity: "Session",
-    entityId: "sess-102",
-    details: { ip: "192.168.1.25", browser: "Safari 17" },
-    createdAt: "2026-02-12T07:50:00",
-  },
-  {
-    id: "log-012",
-    userId: "usr-003",
-    userName: "Giuseppe Verdi",
-    userEmail: "giuseppe.verdi@fruttagest.it",
-    action: "CREATE_ORDER",
-    entity: "Ordine",
-    entityId: "ord-449",
-    details: { cliente: "Ristorante Da Luigi", totale: 890.0 },
-    createdAt: "2026-02-12T09:20:00",
-  },
-  {
-    id: "log-013",
-    userId: "usr-002",
-    userName: "Laura Bianchi",
-    userEmail: "laura.bianchi@fruttagest.it",
-    action: "CREATE_PRODUCT",
-    entity: "Prodotto",
-    entityId: "prod-129",
-    details: { nome: "Arance Tarocco", categoria: "Agrumi" },
-    createdAt: "2026-02-12T10:10:00",
-  },
-  {
-    id: "log-014",
-    userId: "usr-001",
-    userName: "Marco Rossi",
-    userEmail: "marco.rossi@fruttagest.it",
-    action: "UPDATE_CUSTOMER",
-    entity: "Cliente",
-    entityId: "cli-045",
-    details: { campo: "telefono", vecchio: "06-1234567", nuovo: "06-7654321" },
-    createdAt: "2026-02-12T11:40:00",
-  },
-  {
-    id: "log-015",
-    userId: "usr-004",
-    userName: "Anna Conte",
-    userEmail: "anna.conte@fruttagest.it",
-    action: "CREATE_INVOICE",
-    entity: "Fattura",
-    entityId: "fat-891",
-    details: { numero: "FAT-2026-00891", importo: 1580.0 },
-    createdAt: "2026-02-12T14:05:00",
-  },
-  {
-    id: "log-016",
-    userId: "usr-003",
-    userName: "Giuseppe Verdi",
-    userEmail: "giuseppe.verdi@fruttagest.it",
-    action: "CREATE_DDT",
-    entity: "DDT",
-    entityId: "ddt-346",
-    details: { numero: "DDT-2026-00346", destinazione: "Napoli" },
-    createdAt: "2026-02-11T08:30:00",
-  },
-  {
-    id: "log-017",
-    userId: "usr-002",
-    userName: "Laura Bianchi",
-    userEmail: "laura.bianchi@fruttagest.it",
-    action: "LOGIN",
-    entity: "Session",
-    entityId: "sess-100",
-    details: { ip: "192.168.1.15", browser: "Firefox 122" },
-    createdAt: "2026-02-11T08:00:00",
-  },
-  {
-    id: "log-018",
-    userId: "usr-001",
-    userName: "Marco Rossi",
-    userEmail: "marco.rossi@fruttagest.it",
-    action: "CREATE_PAYMENT",
-    entity: "Pagamento",
-    entityId: "pag-200",
-    details: { fattura: "FAT-2026-00885", importo: 4500.0, metodo: "Assegno" },
-    createdAt: "2026-02-11T10:20:00",
-  },
-  {
-    id: "log-019",
-    userId: "usr-004",
-    userName: "Anna Conte",
-    userEmail: "anna.conte@fruttagest.it",
-    action: "UPDATE_ORDER_STATUS",
-    entity: "Ordine",
-    entityId: "ord-445",
-    details: { vecchio_stato: "Confermato", nuovo_stato: "In preparazione" },
-    createdAt: "2026-02-10T15:30:00",
-  },
-  {
-    id: "log-020",
-    userId: "usr-001",
-    userName: "Marco Rossi",
-    userEmail: "marco.rossi@fruttagest.it",
-    action: "UPDATE_SETTING",
-    entity: "Impostazione",
-    entityId: "set-email",
-    details: { chiave: "email_mittente", vecchio: "info@fruttagest.it", nuovo: "noreply@fruttagest.it" },
-    createdAt: "2026-02-10T09:00:00",
-  },
-]
+interface ActivityStats {
+  actionsToday: number
+  actionsWeek: number
+  activeUsersToday: number
+  mostFrequentAction: string | null
+  totalActions: number
+  availableActions: string[]
+}
 
 // ---------------------------------------------------------------------------
 // Action helpers
 // ---------------------------------------------------------------------------
 
-const ACTION_LABELS: Record<ActionType, string> = {
+const ACTION_LABELS: Record<string, string> = {
   LOGIN: "Accesso effettuato",
   CREATE_ORDER: "Ordine creato",
-  UPDATE_CUSTOMER: "Cliente aggiornato",
-  CREATE_PRODUCT: "Prodotto creato",
-  CREATE_INVOICE: "Fattura creata",
-  CREATE_DDT: "DDT creato",
-  UPDATE_SETTING: "Impostazione modificata",
-  DELETE_USER: "Utente eliminato",
-  CREATE_PAYMENT: "Pagamento registrato",
+  UPDATE_ORDER: "Ordine aggiornato",
   UPDATE_ORDER_STATUS: "Stato ordine aggiornato",
+  CANCEL_ORDER: "Ordine annullato",
+  DELETE_ORDER: "Ordine eliminato",
+  CREATE_CUSTOMER: "Cliente creato",
+  UPDATE_CUSTOMER: "Cliente aggiornato",
+  DELETE_CUSTOMER: "Cliente eliminato",
+  DEACTIVATE_CUSTOMER: "Cliente disattivato",
+  CREATE_SUPPLIER: "Fornitore creato",
+  UPDATE_SUPPLIER: "Fornitore aggiornato",
+  DELETE_SUPPLIER: "Fornitore eliminato",
+  DEACTIVATE_SUPPLIER: "Fornitore disattivato",
+  CREATE_PRODUCT: "Prodotto creato",
+  UPDATE_PRODUCT: "Prodotto aggiornato",
+  DELETE_PRODUCT: "Prodotto eliminato",
+  DEACTIVATE_PRODUCT: "Prodotto disattivato",
+  TOGGLE_FEATURED_PRODUCT: "Prodotto in evidenza",
+  SYNC_PRODUCTS: "Sincronizzazione prodotti",
+  CREATE_INVOICE: "Fattura creata",
+  UPDATE_INVOICE_STATUS: "Stato fattura aggiornato",
+  DELETE_INVOICE: "Fattura eliminata",
+  CREATE_DDT: "DDT creato",
+  UPDATE_DDT: "DDT aggiornato",
+  UPDATE_DDT_STATUS: "Stato DDT aggiornato",
+  DELETE_DDT: "DDT eliminato",
+  CREATE_PAYMENT: "Pagamento registrato",
+  DELETE_PAYMENT: "Pagamento eliminato",
+  CREATE_PURCHASE_ORDER: "Ordine acquisto creato",
+  UPDATE_PURCHASE_ORDER: "Ordine acquisto aggiornato",
+  UPDATE_PURCHASE_ORDER_STATUS: "Stato ordine acquisto aggiornato",
+  DELETE_PURCHASE_ORDER: "Ordine acquisto eliminato",
+  CREATE_SUPPLIER_INVOICE: "Fattura fornitore creata",
+  UPDATE_SUPPLIER_INVOICE: "Fattura fornitore aggiornata",
+  DELETE_SUPPLIER_INVOICE: "Fattura fornitore eliminata",
+  CREATE_SHOPPING_LIST: "Lista spesa creata",
+  GENERATE_SHOPPING_LIST: "Lista spesa generata",
+  UPDATE_SHOPPING_LIST_STATUS: "Stato lista spesa aggiornato",
+  DELETE_SHOPPING_LIST: "Lista spesa eliminata",
+  CREATE_PO_FROM_SHOPPING_LIST: "Ordini acquisto da lista spesa",
+  CREATE_STOCK_MOVEMENT: "Movimento magazzino",
+  BULK_STOCK_MOVEMENT: "Movimenti magazzino multipli",
+  UPDATE_USER_ROLE: "Ruolo utente aggiornato",
+  ACTIVATE_USER: "Utente attivato",
+  DEACTIVATE_USER: "Utente disattivato",
+  DELETE_USER: "Utente eliminato",
+  CREATE_PORTAL_USER: "Utente portale creato",
+  UPDATE_APP_SETTING: "Impostazione modificata",
+  UPDATE_COMPANY_INFO: "Dati azienda aggiornati",
+  BACKFILL_COSTS: "Backfill costi fatture",
 }
 
-const ACTION_FILTER_OPTIONS: { value: string; label: string }[] = [
-  { value: "ALL", label: "Tutte le azioni" },
-  { value: "LOGIN", label: "Accessi" },
-  { value: "CREATE_ORDER", label: "Creazione ordini" },
-  { value: "UPDATE_CUSTOMER", label: "Aggiornamento clienti" },
-  { value: "CREATE_PRODUCT", label: "Creazione prodotti" },
-  { value: "CREATE_INVOICE", label: "Creazione fatture" },
-  { value: "CREATE_DDT", label: "Creazione DDT" },
-  { value: "UPDATE_SETTING", label: "Modifiche impostazioni" },
-  { value: "DELETE_USER", label: "Eliminazione utenti" },
-  { value: "CREATE_PAYMENT", label: "Registrazione pagamenti" },
-  { value: "UPDATE_ORDER_STATUS", label: "Aggiornamento stato ordini" },
-]
+function getActionLabel(action: string): string {
+  return (
+    ACTION_LABELS[action] ??
+    action.toLowerCase().replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())
+  )
+}
 
-function getActionColor(action: ActionType): string {
+function getActionColor(action: string): string {
   if (action === "LOGIN") return "blue"
-  if (action.startsWith("CREATE_")) return "emerald"
-  if (action.startsWith("UPDATE_")) return "amber"
-  if (action.startsWith("DELETE_")) return "red"
+  if (action.startsWith("CREATE_") || action.startsWith("GENERATE_") || action === "ACTIVATE_USER") return "emerald"
+  if (action.startsWith("UPDATE_") || action.startsWith("TOGGLE_") || action.startsWith("SYNC_")) return "amber"
+  if (action.startsWith("DELETE_") || action.startsWith("DEACTIVATE_") || action.startsWith("CANCEL_")) return "red"
   return "gray"
 }
 
-function getActionBadgeVariant(action: ActionType) {
+function getActionBadgeVariant(action: string) {
   const color = getActionColor(action)
   if (color === "blue") return "info" as const
   if (color === "emerald") return "success" as const
@@ -337,19 +141,19 @@ function getActionBadgeVariant(action: ActionType) {
   return "secondary" as const
 }
 
-function getActionIcon(action: ActionType) {
+function getActionIcon(action: string) {
   if (action === "LOGIN") return User
-  if (action === "CREATE_ORDER" || action === "UPDATE_ORDER_STATUS") return ShoppingCart
-  if (action === "CREATE_PRODUCT") return Package
-  if (action === "CREATE_INVOICE" || action === "CREATE_DDT") return FileText
-  if (action === "CREATE_PAYMENT") return CreditCard
-  if (action === "UPDATE_SETTING") return SettingsIcon
-  if (action === "DELETE_USER") return Shield
-  if (action === "UPDATE_CUSTOMER") return User
+  if (action.includes("ORDER") || action.includes("SHOPPING")) return ShoppingCart
+  if (action.includes("PRODUCT") || action.includes("STOCK")) return Package
+  if (action.includes("INVOICE") || action.includes("DDT")) return FileText
+  if (action.includes("PAYMENT")) return CreditCard
+  if (action.includes("SETTING") || action.includes("COMPANY")) return SettingsIcon
+  if (action.includes("USER") || action.includes("ROLE")) return Shield
+  if (action.includes("CUSTOMER") || action.includes("SUPPLIER")) return User
   return Activity
 }
 
-function getActionIconColor(action: ActionType): string {
+function getActionIconColor(action: string): string {
   const color = getActionColor(action)
   if (color === "blue") return "text-blue-500 bg-blue-50 dark:bg-blue-950/40"
   if (color === "emerald") return "text-emerald-500 bg-emerald-50 dark:bg-emerald-950/40"
@@ -367,164 +171,126 @@ function getUserInitials(name: string): string {
     .slice(0, 2)
 }
 
-function getActionDescription(entry: ActivityLogEntry): string {
-  const d = entry.details as Record<string, unknown>
-  switch (entry.action) {
-    case "LOGIN":
-      return `ha effettuato l'accesso da ${d.browser ?? "browser sconosciuto"}`
-    case "CREATE_ORDER":
-      return `ha creato un ordine per ${d.cliente ?? "cliente"} — ${d.totale ? `\u20ac${d.totale}` : ""}`
-    case "UPDATE_CUSTOMER":
-      return `ha aggiornato il campo "${d.campo}" del cliente ${entry.entityId}`
-    case "CREATE_PRODUCT":
-      return `ha aggiunto il prodotto "${d.nome}" (${d.categoria})`
-    case "CREATE_INVOICE":
-      return `ha emesso la fattura ${d.numero} — ${d.importo ? `\u20ac${d.importo}` : ""}`
-    case "CREATE_DDT":
-      return `ha creato il DDT ${d.numero} per ${d.destinazione}`
-    case "UPDATE_SETTING":
-      return `ha modificato "${d.chiave}": ${d.vecchio} \u2192 ${d.nuovo}`
-    case "DELETE_USER":
-      return `ha eliminato l'utente ${d.utente_eliminato} (${d.motivo})`
-    case "CREATE_PAYMENT":
-      return `ha registrato un pagamento di \u20ac${d.importo} via ${d.metodo}`
-    case "UPDATE_ORDER_STATUS":
-      return `ha aggiornato lo stato dell'ordine: ${d.vecchio_stato} \u2192 ${d.nuovo_stato}`
-    default:
-      return ACTION_LABELS[entry.action]
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Helpers for summary cards
-// ---------------------------------------------------------------------------
-
-function isToday(dateStr: string): boolean {
-  const d = new Date(dateStr)
-  const now = new Date()
-  return (
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
-  )
-}
-
-function isThisWeek(dateStr: string): boolean {
-  const d = new Date(dateStr)
-  const now = new Date()
-  const weekAgo = new Date(now)
-  weekAgo.setDate(weekAgo.getDate() - 7)
-  return d >= weekAgo && d <= now
+/** Descrizione leggibile dei dettagli del log (chiave: valore, prime 3 voci) */
+function getDetailsDescription(entry: ActivityLogEntry): string {
+  if (!entry.details || typeof entry.details !== "object") return ""
+  const parts = Object.entries(entry.details)
+    .filter(([, v]) => v !== null && v !== undefined && typeof v !== "object")
+    .slice(0, 3)
+    .map(([k, v]) => `${k.replace(/_/g, " ")}: ${String(v)}`)
+  return parts.join(" · ")
 }
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const ITEMS_PER_PAGE = 8
+const ITEMS_PER_PAGE = 10
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 export default function AdminActivityPage() {
-  const [searchQuery, setSearchQuery] = useState("")
+  const [searchInput, setSearchInput] = useState("")
+  const [search, setSearch] = useState("")
   const [actionFilter, setActionFilter] = useState("ALL")
   const [dateFrom, setDateFrom] = useState("")
   const [dateTo, setDateTo] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
-  const [isRefreshing, setIsRefreshing] = useState(false)
 
-  // ---- Computed summary ----
-  const todayCount = activityLogs.filter((l) => isToday(l.createdAt)).length
-  const weekCount = activityLogs.filter((l) => isThisWeek(l.createdAt)).length
-  const activeUsersToday = new Set(
-    activityLogs.filter((l) => isToday(l.createdAt)).map((l) => l.userId)
-  ).size
+  const [loading, setLoading] = useState(true)
+  const [logs, setLogs] = useState<ActivityLogEntry[]>([])
+  const [total, setTotal] = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
+  const [stats, setStats] = useState<ActivityStats | null>(null)
 
-  const mostFrequentAction = useMemo(() => {
-    const counts: Record<string, number> = {}
-    for (const log of activityLogs) {
-      counts[log.action] = (counts[log.action] || 0) + 1
-    }
-    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1])
-    return sorted.length > 0 ? ACTION_LABELS[sorted[0][0] as ActionType] : "-"
+  // Debounce ricerca
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput)
+      setCurrentPage(1)
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [searchInput])
+
+  const loadStats = useCallback(async () => {
+    try {
+      const result = await getActivityStats()
+      setStats(result as unknown as ActivityStats)
+    } catch {}
   }, [])
 
-  // ---- Filtered data ----
-  const filteredLogs = useMemo(() => {
-    let result = [...activityLogs]
-
-    // Search filter
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase()
-      result = result.filter(
-        (l) =>
-          l.userName.toLowerCase().includes(q) ||
-          l.userEmail.toLowerCase().includes(q) ||
-          l.entity.toLowerCase().includes(q) ||
-          ACTION_LABELS[l.action].toLowerCase().includes(q)
-      )
+  const loadLogs = useCallback(async () => {
+    try {
+      setLoading(true)
+      const result = await getActivityLogs({
+        page: currentPage,
+        pageSize: ITEMS_PER_PAGE,
+        search,
+        action: actionFilter !== "ALL" ? actionFilter : undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+      })
+      const parsed = result as unknown as { data: ActivityLogEntry[]; total: number; totalPages: number }
+      setLogs(parsed.data)
+      setTotal(parsed.total)
+      setTotalPages(Math.max(1, parsed.totalPages))
+    } catch {} finally {
+      setLoading(false)
     }
+  }, [currentPage, search, actionFilter, dateFrom, dateTo])
 
-    // Action type filter
-    if (actionFilter !== "ALL") {
-      result = result.filter((l) => l.action === actionFilter)
-    }
+  useEffect(() => { loadStats() }, [loadStats])
+  useEffect(() => { loadLogs() }, [loadLogs])
 
-    // Date range filter
-    if (dateFrom) {
-      const from = new Date(dateFrom)
-      result = result.filter((l) => new Date(l.createdAt) >= from)
-    }
-    if (dateTo) {
-      const to = new Date(dateTo)
-      to.setHours(23, 59, 59, 999)
-      result = result.filter((l) => new Date(l.createdAt) <= to)
-    }
-
-    // Sort by newest first
-    result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-
-    return result
-  }, [searchQuery, actionFilter, dateFrom, dateTo])
-
-  // ---- Pagination ----
-  const totalPages = Math.max(1, Math.ceil(filteredLogs.length / ITEMS_PER_PAGE))
-  const paginatedLogs = filteredLogs.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  )
-
-  // Reset to page 1 when filters change
-  const handleFilterChange = (setter: (v: string) => void, value: string) => {
-    setter(value)
-    setCurrentPage(1)
-  }
-
-  // Fake refresh
   const handleRefresh = () => {
-    setIsRefreshing(true)
-    setTimeout(() => setIsRefreshing(false), 1000)
+    loadStats()
+    loadLogs()
   }
 
-  // Fake CSV export
-  const handleExportCSV = () => {
-    const header = "ID,Utente,Email,Azione,Entita,Data\n"
-    const rows = filteredLogs
-      .map(
-        (l) =>
-          `${l.id},${l.userName},${l.userEmail},${l.action},${l.entity},${l.createdAt}`
-      )
-      .join("\n")
-    const blob = new Blob([header + rows], { type: "text/csv;charset=utf-8;" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = "activity-log.csv"
-    a.click()
-    URL.revokeObjectURL(url)
+  // Esporta in CSV i log con i filtri correnti (fino a 1000 righe)
+  const handleExportCSV = async () => {
+    try {
+      const result = await getActivityLogs({
+        page: 1,
+        pageSize: 1000,
+        search,
+        action: actionFilter !== "ALL" ? actionFilter : undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+      })
+      const parsed = result as unknown as { data: ActivityLogEntry[] }
+      const header = "ID,Utente,Email,Azione,Entita,Data\n"
+      const rows = parsed.data
+        .map(
+          (l) =>
+            `${l.id},${l.user?.name ?? ""},${l.user?.email ?? ""},${l.action},${l.entity ?? ""},${l.createdAt}`
+        )
+        .join("\n")
+      const blob = new Blob([header + rows], { type: "text/csv;charset=utf-8;" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = "activity-log.csv"
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {}
   }
+
+  const actionFilterOptions = [
+    { value: "ALL", label: "Tutte le azioni" },
+    ...(stats?.availableActions ?? []).map((a) => ({ value: a, label: getActionLabel(a) })),
+  ]
+
+  const pageNumbers = (() => {
+    // Mostra al massimo 5 numeri di pagina centrati sulla corrente
+    const maxButtons = 5
+    let start = Math.max(1, currentPage - Math.floor(maxButtons / 2))
+    const end = Math.min(totalPages, start + maxButtons - 1)
+    start = Math.max(1, end - maxButtons + 1)
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i)
+  })()
 
   // ---- Render ----
 
@@ -546,10 +312,9 @@ export default function AdminActivityPage() {
               variant="outline"
               size="sm"
               onClick={handleRefresh}
-              disabled={isRefreshing}
-              loading={isRefreshing}
+              disabled={loading}
             >
-              <RefreshCw className="h-4 w-4" strokeWidth={1.75} />
+              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} strokeWidth={1.75} />
               Aggiorna
             </Button>
             <Button variant="outline" size="sm" onClick={handleExportCSV}>
@@ -572,7 +337,7 @@ export default function AdminActivityPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{todayCount}</div>
+                <div className="text-2xl font-bold">{stats?.actionsToday ?? 0}</div>
                 <p className="text-xs text-muted-foreground mt-1">
                   registrate nelle ultime 24h
                 </p>
@@ -590,7 +355,7 @@ export default function AdminActivityPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{weekCount}</div>
+                <div className="text-2xl font-bold">{stats?.actionsWeek ?? 0}</div>
                 <p className="text-xs text-muted-foreground mt-1">
                   negli ultimi 7 giorni
                 </p>
@@ -608,7 +373,7 @@ export default function AdminActivityPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{activeUsersToday}</div>
+                <div className="text-2xl font-bold">{stats?.activeUsersToday ?? 0}</div>
                 <p className="text-xs text-muted-foreground mt-1">
                   utenti con almeno 1 azione
                 </p>
@@ -626,9 +391,11 @@ export default function AdminActivityPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-lg font-bold leading-tight">{mostFrequentAction}</div>
+                <div className="text-lg font-bold leading-tight">
+                  {stats?.mostFrequentAction ? getActionLabel(stats.mostFrequentAction) : "—"}
+                </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  su {activityLogs.length} azioni totali
+                  su {stats?.totalActions ?? 0} azioni totali
                 </p>
               </CardContent>
             </Card>
@@ -643,8 +410,8 @@ export default function AdminActivityPage() {
                 <Input
                   icon={Search}
                   placeholder="Cerca per utente, email, entita..."
-                  value={searchQuery}
-                  onChange={(e) => handleFilterChange(setSearchQuery, e.target.value)}
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                 />
               </div>
               <div className="w-full sm:w-52">
@@ -653,10 +420,10 @@ export default function AdminActivityPage() {
                 </label>
                 <select
                   value={actionFilter}
-                  onChange={(e) => handleFilterChange(setActionFilter, e.target.value)}
+                  onChange={(e) => { setActionFilter(e.target.value); setCurrentPage(1) }}
                   className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm transition-all duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-primary"
                 >
-                  {ACTION_FILTER_OPTIONS.map((opt) => (
+                  {actionFilterOptions.map((opt) => (
                     <option key={opt.value} value={opt.value}>
                       {opt.label}
                     </option>
@@ -670,7 +437,7 @@ export default function AdminActivityPage() {
                 <input
                   type="date"
                   value={dateFrom}
-                  onChange={(e) => handleFilterChange(setDateFrom, e.target.value)}
+                  onChange={(e) => { setDateFrom(e.target.value); setCurrentPage(1) }}
                   className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm transition-all duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-primary"
                 />
               </div>
@@ -681,7 +448,7 @@ export default function AdminActivityPage() {
                 <input
                   type="date"
                   value={dateTo}
-                  onChange={(e) => handleFilterChange(setDateTo, e.target.value)}
+                  onChange={(e) => { setDateTo(e.target.value); setCurrentPage(1) }}
                   className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm transition-all duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-primary"
                 />
               </div>
@@ -698,12 +465,16 @@ export default function AdminActivityPage() {
                 Cronologia Attivita
               </CardTitle>
               <span className="text-sm text-muted-foreground">
-                {filteredLogs.length} {filteredLogs.length === 1 ? "risultato" : "risultati"}
+                {total} {total === 1 ? "risultato" : "risultati"}
               </span>
             </div>
           </CardHeader>
           <CardContent>
-            {paginatedLogs.length === 0 ? (
+            {loading ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
+              </div>
+            ) : logs.length === 0 ? (
               <div className="py-12 text-center">
                 <Activity className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" strokeWidth={1.75} />
                 <p className="text-sm text-muted-foreground">
@@ -715,9 +486,11 @@ export default function AdminActivityPage() {
                 {/* Vertical timeline line */}
                 <div className="absolute left-[23px] top-0 bottom-0 w-px bg-border" />
 
-                {paginatedLogs.map((entry) => {
+                {logs.map((entry) => {
                   const ActionIcon = getActionIcon(entry.action)
                   const iconColor = getActionIconColor(entry.action)
+                  const userName = entry.user?.name ?? entry.user?.email ?? "Sistema"
+                  const detailsText = getDetailsDescription(entry)
 
                   return (
                     <StaggerItem key={entry.id}>
@@ -735,13 +508,13 @@ export default function AdminActivityPage() {
                             <div className="flex items-center gap-2 min-w-0">
                               {/* User avatar (initials) */}
                               <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary">
-                                {getUserInitials(entry.userName)}
+                                {getUserInitials(userName)}
                               </div>
                               <span className="font-medium text-sm text-foreground truncate">
-                                {entry.userName}
+                                {userName}
                               </span>
                               <Badge variant={getActionBadgeVariant(entry.action)} className="shrink-0">
-                                {ACTION_LABELS[entry.action]}
+                                {getActionLabel(entry.action)}
                               </Badge>
                             </div>
                             <span className="text-xs text-muted-foreground whitespace-nowrap flex items-center gap-1">
@@ -749,15 +522,19 @@ export default function AdminActivityPage() {
                               {formatDateTime(entry.createdAt)}
                             </span>
                           </div>
-                          <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
-                            {getActionDescription(entry)}
-                          </p>
+                          {detailsText && (
+                            <p className="mt-1 text-sm text-muted-foreground leading-relaxed break-words">
+                              {detailsText}
+                            </p>
+                          )}
                           <div className="mt-1.5 flex items-center gap-2 text-xs text-muted-foreground/70">
-                            <span>
-                              {entry.entity} #{entry.entityId}
-                            </span>
-                            <span className="text-border">|</span>
-                            <span>{entry.userEmail}</span>
+                            {entry.entity && (
+                              <span>
+                                {entry.entity}{entry.entityId ? ` #${entry.entityId.slice(-8)}` : ""}
+                              </span>
+                            )}
+                            {entry.entity && entry.user?.email && <span className="text-border">|</span>}
+                            {entry.user?.email && <span>{entry.user.email}</span>}
                           </div>
                         </div>
                       </div>
@@ -768,7 +545,7 @@ export default function AdminActivityPage() {
             )}
 
             {/* ---- Pagination ---- */}
-            {totalPages > 1 && (
+            {!loading && totalPages > 1 && (
               <div className="mt-6 flex items-center justify-between border-t border-border pt-4">
                 <p className="text-sm text-muted-foreground">
                   Pagina {currentPage} di {totalPages}
@@ -782,7 +559,7 @@ export default function AdminActivityPage() {
                   >
                     Precedente
                   </Button>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  {pageNumbers.map((page) => (
                     <Button
                       key={page}
                       variant={page === currentPage ? "default" : "ghost"}

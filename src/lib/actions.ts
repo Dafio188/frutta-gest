@@ -4199,7 +4199,7 @@ export async function toggleUserActive(id: string) {
 }
 
 export async function getActivityLogs(
-  params: PaginationParams & { userId?: string; action?: string; entity?: string } = {}
+  params: PaginationParams & { userId?: string; action?: string; entity?: string; dateFrom?: string; dateTo?: string } = {}
 ) {
   const session = await requireAdmin()
   const db = await getCurrentDb()
@@ -4213,7 +4213,20 @@ export async function getActivityLogs(
     userId,
     action,
     entity,
+    dateFrom,
+    dateTo,
   } = params
+
+  let dateFilter: Prisma.DateTimeFilter | undefined
+  if (dateFrom || dateTo) {
+    dateFilter = {}
+    if (dateFrom) dateFilter.gte = new Date(dateFrom)
+    if (dateTo) {
+      const to = new Date(dateTo)
+      to.setHours(23, 59, 59, 999)
+      dateFilter.lte = to
+    }
+  }
 
   const where: Prisma.ActivityLogWhereInput = {
     ...(search
@@ -4229,6 +4242,7 @@ export async function getActivityLogs(
     ...(userId ? { userId } : {}),
     ...(action ? { action } : {}),
     ...(entity ? { entity } : {}),
+    ...(dateFilter ? { createdAt: dateFilter } : {}),
   }
 
   const [data, total] = await Promise.all([
@@ -5304,4 +5318,494 @@ export async function getDashboardChartsData() {
     topCustomers,
     topProducts
   })
+}
+
+// ============================================================
+// REPORT AVANZATI (Vendite, Prodotti, Clienti, Admin)
+// ============================================================
+
+function percentChange(current: number, previous: number): number | null {
+  if (previous <= 0) return null
+  return Math.round(((current - previous) / previous) * 1000) / 10
+}
+
+export async function getSalesReport(days: number = 30) {
+  await requireAuth()
+
+  const empty = {
+    kpis: {
+      revenue: 0, revenueChange: null,
+      orders: 0, ordersChange: null,
+      avgOrder: 0, avgOrderChange: null,
+    },
+    chart: [] as { label: string; value: number }[],
+    topProducts: [] as { productId: string; productName: string; totalQuantity: number; totalRevenue: number; unit: string }[],
+    topCustomers: [] as { customerId: string; customerName: string; totalOrders: number; totalRevenue: number }[],
+  }
+  if (await isMasterContext()) return empty
+
+  const db = await getCurrentDb()
+
+  const now = new Date()
+  const startDate = new Date(now)
+  startDate.setDate(startDate.getDate() - days)
+  startDate.setHours(0, 0, 0, 0)
+  const prevStartDate = new Date(startDate)
+  prevStartDate.setDate(prevStartDate.getDate() - days)
+
+  const invoiceStatusFilter = { notIn: ["CANCELLED", "DRAFT"] as any }
+
+  const [invoiceAgg, prevInvoiceAgg, orderAgg, prevOrderAgg, invoices, topProductRows, topCustomerRows] =
+    await Promise.all([
+      db.invoice.aggregate({
+        _sum: { total: true },
+        where: { issueDate: { gte: startDate }, status: invoiceStatusFilter },
+      }),
+      db.invoice.aggregate({
+        _sum: { total: true },
+        where: { issueDate: { gte: prevStartDate, lt: startDate }, status: invoiceStatusFilter },
+      }),
+      db.order.aggregate({
+        _count: { id: true },
+        _sum: { total: true },
+        where: { orderDate: { gte: startDate }, status: { not: "CANCELLED" } },
+      }),
+      db.order.aggregate({
+        _count: { id: true },
+        _sum: { total: true },
+        where: { orderDate: { gte: prevStartDate, lt: startDate }, status: { not: "CANCELLED" } },
+      }),
+      db.invoice.findMany({
+        where: { issueDate: { gte: startDate }, status: invoiceStatusFilter },
+        select: { issueDate: true, total: true },
+      }),
+      db.orderItem.groupBy({
+        by: ["productId"],
+        _sum: { quantity: true, lineTotal: true },
+        where: { order: { orderDate: { gte: startDate }, status: { not: "CANCELLED" } } },
+        orderBy: { _sum: { lineTotal: "desc" } },
+        take: 10,
+      }),
+      db.order.groupBy({
+        by: ["customerId"],
+        _count: { id: true },
+        _sum: { total: true },
+        where: { orderDate: { gte: startDate }, status: { not: "CANCELLED" } },
+        orderBy: { _sum: { total: "desc" } },
+        take: 10,
+      }),
+    ])
+
+  // KPI con confronto sul periodo precedente
+  const revenue = Number(invoiceAgg._sum.total ?? 0)
+  const prevRevenue = Number(prevInvoiceAgg._sum.total ?? 0)
+  const orderCount = orderAgg._count.id
+  const prevOrderCount = prevOrderAgg._count.id
+  const avgOrder = orderCount > 0 ? Number(orderAgg._sum.total ?? 0) / orderCount : 0
+  const prevAvgOrder = prevOrderCount > 0 ? Number(prevOrderAgg._sum.total ?? 0) / prevOrderCount : 0
+
+  // Grafico fatturato: bucket giornalieri, settimanali o mensili in base al periodo
+  const bucketMode = days <= 31 ? "day" : days <= 120 ? "week" : "month"
+  const buckets: { key: string; label: string; value: number; start: Date }[] = []
+
+  if (bucketMode === "month") {
+    const first = new Date(startDate.getFullYear(), startDate.getMonth(), 1)
+    for (let d = new Date(first); d <= now; d.setMonth(d.getMonth() + 1)) {
+      const start = new Date(d)
+      buckets.push({
+        key: `${start.getFullYear()}-${start.getMonth()}`,
+        label: start.toLocaleDateString("it-IT", { month: "short" }),
+        value: 0,
+        start,
+      })
+    }
+  } else {
+    const stepDays = bucketMode === "day" ? 1 : 7
+    for (let d = new Date(startDate); d <= now; d.setDate(d.getDate() + stepDays)) {
+      const start = new Date(d)
+      buckets.push({
+        key: start.toISOString().split("T")[0],
+        label: start.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" }),
+        value: 0,
+        start,
+      })
+    }
+  }
+
+  for (const inv of invoices) {
+    // Trova l'ultimo bucket il cui inizio è <= data fattura
+    for (let i = buckets.length - 1; i >= 0; i--) {
+      if (inv.issueDate >= buckets[i].start) {
+        buckets[i].value += Number(inv.total)
+        break
+      }
+    }
+  }
+
+  // Dettagli prodotti e clienti
+  const productIds = topProductRows.map((r) => r.productId).filter(Boolean)
+  const customerIds = topCustomerRows.map((r) => r.customerId)
+  const [products, customers] = await Promise.all([
+    db.product.findMany({ where: { id: { in: productIds } }, select: { id: true, name: true, unit: true } }),
+    db.customer.findMany({ where: { id: { in: customerIds } }, select: { id: true, companyName: true } }),
+  ])
+  const productMap = new Map(products.map((p) => [p.id, p]))
+  const customerMap = new Map(customers.map((c) => [c.id, c]))
+
+  return {
+    kpis: {
+      revenue: Math.round(revenue * 100) / 100,
+      revenueChange: percentChange(revenue, prevRevenue),
+      orders: orderCount,
+      ordersChange: percentChange(orderCount, prevOrderCount),
+      avgOrder: Math.round(avgOrder * 100) / 100,
+      avgOrderChange: percentChange(avgOrder, prevAvgOrder),
+    },
+    chart: buckets.map((b) => ({ label: b.label, value: Math.round(b.value * 100) / 100 })),
+    topProducts: topProductRows.map((row) => {
+      const product = row.productId ? productMap.get(row.productId) : null
+      return {
+        productId: row.productId ?? "custom",
+        productName: product?.name ?? "Prodotti Personalizzati",
+        totalQuantity: Number(row._sum.quantity ?? 0),
+        totalRevenue: Number(row._sum.lineTotal ?? 0),
+        unit: product?.unit ?? "PEZZI",
+      }
+    }),
+    topCustomers: topCustomerRows.map((row) => ({
+      customerId: row.customerId,
+      customerName: customerMap.get(row.customerId)?.companyName ?? "Sconosciuto",
+      totalOrders: row._count.id,
+      totalRevenue: Number(row._sum.total ?? 0),
+    })),
+  }
+}
+
+export async function getProductsReport(days: number = 30) {
+  await requireAuth()
+
+  const empty = {
+    totals: { quantity: 0, revenue: 0, categories: 0 },
+    categories: [] as { name: string; quantity: number; revenue: number; percentage: number }[],
+    monthlyTrend: { categories: [] as string[], months: [] as { label: string; values: Record<string, number> }[] },
+    topProducts: [] as { name: string; category: string; quantity: number; revenue: number; unit: string; trend: number | null }[],
+  }
+  if (await isMasterContext()) return empty
+
+  const db = await getCurrentDb()
+
+  const now = new Date()
+  const startDate = new Date(now)
+  startDate.setDate(startDate.getDate() - days)
+  startDate.setHours(0, 0, 0, 0)
+  const prevStartDate = new Date(startDate)
+  prevStartDate.setDate(prevStartDate.getDate() - days)
+  const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1)
+  const fetchStart = sixMonthsAgo < prevStartDate ? sixMonthsAgo : prevStartDate
+
+  const items = await db.orderItem.findMany({
+    where: { order: { orderDate: { gte: fetchStart }, status: { not: "CANCELLED" } } },
+    select: {
+      quantity: true,
+      lineTotal: true,
+      productName: true,
+      unit: true,
+      order: { select: { orderDate: true } },
+      product: { select: { id: true, name: true, unit: true, category: { select: { name: true } } } },
+    },
+  })
+
+  const categoryAgg = new Map<string, { quantity: number; revenue: number }>()
+  const productAgg = new Map<string, { name: string; category: string; quantity: number; revenue: number; unit: string }>()
+  const productPrevRevenue = new Map<string, number>()
+  const monthCategoryAgg = new Map<string, Map<string, number>>() // monthKey -> category -> revenue
+  const trendCategoryTotals = new Map<string, number>()
+
+  for (const item of items) {
+    const orderDate = item.order.orderDate
+    const categoryName = item.product?.category?.name ?? "Altro"
+    const productKey = item.product?.id ?? `custom:${item.productName ?? "?"}`
+    const revenue = Number(item.lineTotal)
+    const quantity = Number(item.quantity)
+
+    // Periodo selezionato: distribuzione categorie + top prodotti
+    if (orderDate >= startDate) {
+      const cat = categoryAgg.get(categoryName) ?? { quantity: 0, revenue: 0 }
+      cat.quantity += quantity
+      cat.revenue += revenue
+      categoryAgg.set(categoryName, cat)
+
+      const prod = productAgg.get(productKey) ?? {
+        name: item.product?.name ?? item.productName ?? "Sconosciuto",
+        category: categoryName,
+        quantity: 0,
+        revenue: 0,
+        unit: item.product?.unit ?? item.unit ?? "PEZZI",
+      }
+      prod.quantity += quantity
+      prod.revenue += revenue
+      productAgg.set(productKey, prod)
+    } else if (orderDate >= prevStartDate) {
+      // Periodo precedente: per calcolare il trend dei prodotti
+      productPrevRevenue.set(productKey, (productPrevRevenue.get(productKey) ?? 0) + revenue)
+    }
+
+    // Trend mensile (ultimi 6 mesi, indipendente dal periodo selezionato)
+    if (orderDate >= sixMonthsAgo) {
+      const monthKey = `${orderDate.getFullYear()}-${orderDate.getMonth()}`
+      let monthMap = monthCategoryAgg.get(monthKey)
+      if (!monthMap) {
+        monthMap = new Map()
+        monthCategoryAgg.set(monthKey, monthMap)
+      }
+      monthMap.set(categoryName, (monthMap.get(categoryName) ?? 0) + revenue)
+      trendCategoryTotals.set(categoryName, (trendCategoryTotals.get(categoryName) ?? 0) + revenue)
+    }
+  }
+
+  const totalRevenue = Array.from(categoryAgg.values()).reduce((sum, c) => sum + c.revenue, 0)
+  const totalQuantity = Array.from(categoryAgg.values()).reduce((sum, c) => sum + c.quantity, 0)
+
+  const categories = Array.from(categoryAgg.entries())
+    .map(([name, agg]) => ({
+      name,
+      quantity: Math.round(agg.quantity * 100) / 100,
+      revenue: Math.round(agg.revenue * 100) / 100,
+      percentage: totalRevenue > 0 ? Math.round((agg.revenue / totalRevenue) * 100) : 0,
+    }))
+    .sort((a, b) => b.revenue - a.revenue)
+
+  // Top 3 categorie per il grafico mensile
+  const topTrendCategories = Array.from(trendCategoryTotals.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([name]) => name)
+
+  const months: { label: string; values: Record<string, number> }[] = []
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1)
+    const monthKey = `${d.getFullYear()}-${d.getMonth()}`
+    const monthMap = monthCategoryAgg.get(monthKey)
+    const values: Record<string, number> = {}
+    for (const cat of topTrendCategories) {
+      values[cat] = Math.round((monthMap?.get(cat) ?? 0) * 100) / 100
+    }
+    months.push({ label: d.toLocaleDateString("it-IT", { month: "short" }), values })
+  }
+
+  const topProducts = Array.from(productAgg.entries())
+    .sort((a, b) => b[1].revenue - a[1].revenue)
+    .slice(0, 10)
+    .map(([key, prod]) => ({
+      name: prod.name,
+      category: prod.category,
+      quantity: Math.round(prod.quantity * 100) / 100,
+      revenue: Math.round(prod.revenue * 100) / 100,
+      unit: prod.unit,
+      trend: percentChange(prod.revenue, productPrevRevenue.get(key) ?? 0),
+    }))
+
+  return {
+    totals: {
+      quantity: Math.round(totalQuantity * 100) / 100,
+      revenue: Math.round(totalRevenue * 100) / 100,
+      categories: categories.length,
+    },
+    categories,
+    monthlyTrend: { categories: topTrendCategories, months },
+    topProducts,
+  }
+}
+
+export async function getCustomersReport(days: number = 30) {
+  await requireAuth()
+
+  const empty = {
+    kpis: { activeCustomers: 0, newCustomers: 0, revenue: 0, avgPerCustomer: 0 },
+    typeDistribution: [] as { type: string; customers: number; revenue: number; percentage: number }[],
+    topCustomers: [] as {
+      customerId: string; companyName: string; type: string; city: string
+      totalOrders: number; totalRevenue: number; avgOrder: number; trend: number | null
+    }[],
+  }
+  if (await isMasterContext()) return empty
+
+  const db = await getCurrentDb()
+
+  const now = new Date()
+  const startDate = new Date(now)
+  startDate.setDate(startDate.getDate() - days)
+  startDate.setHours(0, 0, 0, 0)
+  const prevStartDate = new Date(startDate)
+  prevStartDate.setDate(prevStartDate.getDate() - days)
+
+  const [ordersByCustomer, prevOrdersByCustomer, newCustomers] = await Promise.all([
+    db.order.groupBy({
+      by: ["customerId"],
+      _count: { id: true },
+      _sum: { total: true },
+      where: { orderDate: { gte: startDate }, status: { not: "CANCELLED" } },
+      orderBy: { _sum: { total: "desc" } },
+    }),
+    db.order.groupBy({
+      by: ["customerId"],
+      _sum: { total: true },
+      where: { orderDate: { gte: prevStartDate, lt: startDate }, status: { not: "CANCELLED" } },
+    }),
+    db.customer.count({ where: { createdAt: { gte: startDate } } }),
+  ])
+
+  const customerIds = ordersByCustomer.map((o) => o.customerId)
+  const customers = await db.customer.findMany({
+    where: { id: { in: customerIds } },
+    select: { id: true, companyName: true, type: true, city: true },
+  })
+  const customerMap = new Map(customers.map((c) => [c.id, c]))
+  const prevRevenueMap = new Map(prevOrdersByCustomer.map((o) => [o.customerId, Number(o._sum.total ?? 0)]))
+
+  const totalRevenue = ordersByCustomer.reduce((sum, o) => sum + Number(o._sum.total ?? 0), 0)
+
+  // Distribuzione per tipologia cliente
+  const typeAgg = new Map<string, { customers: number; revenue: number }>()
+  for (const entry of ordersByCustomer) {
+    const type = customerMap.get(entry.customerId)?.type ?? "ALTRO"
+    const agg = typeAgg.get(type) ?? { customers: 0, revenue: 0 }
+    agg.customers += 1
+    agg.revenue += Number(entry._sum.total ?? 0)
+    typeAgg.set(type, agg)
+  }
+
+  const typeDistribution = Array.from(typeAgg.entries())
+    .map(([type, agg]) => ({
+      type,
+      customers: agg.customers,
+      revenue: Math.round(agg.revenue * 100) / 100,
+      percentage: totalRevenue > 0 ? Math.round((agg.revenue / totalRevenue) * 100) : 0,
+    }))
+    .sort((a, b) => b.revenue - a.revenue)
+
+  const topCustomers = ordersByCustomer.slice(0, 15).map((entry) => {
+    const customer = customerMap.get(entry.customerId)
+    const revenue = Number(entry._sum.total ?? 0)
+    return {
+      customerId: entry.customerId,
+      companyName: customer?.companyName ?? "Sconosciuto",
+      type: customer?.type ?? "ALTRO",
+      city: customer?.city ?? "",
+      totalOrders: entry._count.id,
+      totalRevenue: Math.round(revenue * 100) / 100,
+      avgOrder: entry._count.id > 0 ? Math.round((revenue / entry._count.id) * 100) / 100 : 0,
+      trend: percentChange(revenue, prevRevenueMap.get(entry.customerId) ?? 0),
+    }
+  })
+
+  return {
+    kpis: {
+      activeCustomers: ordersByCustomer.length,
+      newCustomers,
+      revenue: Math.round(totalRevenue * 100) / 100,
+      avgPerCustomer: ordersByCustomer.length > 0
+        ? Math.round((totalRevenue / ordersByCustomer.length) * 100) / 100
+        : 0,
+    },
+    typeDistribution,
+    topCustomers,
+  }
+}
+
+export async function getAdminStats() {
+  await requireAdmin()
+
+  const empty = {
+    totalUsers: 0, activeUsers: 0,
+    ordersThisMonth: 0, ordersChange: null,
+    totalProducts: 0,
+    totalRevenue: 0, revenueChange: null,
+  }
+  if (await isMasterContext()) return empty
+
+  const db = await getCurrentDb()
+
+  const now = new Date()
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+  const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+
+  const [totalUsers, activeUsers, ordersThisMonth, ordersPrevMonth, totalProducts, revenueAgg, prevRevenueAgg] =
+    await Promise.all([
+      db.user.count(),
+      db.user.count({ where: { isActive: true } }),
+      db.order.count({ where: { orderDate: { gte: startOfMonth }, status: { not: "CANCELLED" } } }),
+      db.order.count({
+        where: { orderDate: { gte: startOfPrevMonth, lt: startOfMonth }, status: { not: "CANCELLED" } },
+      }),
+      db.product.count({ where: { isAvailable: true } }),
+      db.invoice.aggregate({
+        _sum: { total: true },
+        where: { issueDate: { gte: startOfMonth }, status: { notIn: ["CANCELLED", "DRAFT"] } },
+      }),
+      db.invoice.aggregate({
+        _sum: { total: true },
+        where: { issueDate: { gte: startOfPrevMonth, lt: startOfMonth }, status: { notIn: ["CANCELLED", "DRAFT"] } },
+      }),
+    ])
+
+  const totalRevenue = Number(revenueAgg._sum.total ?? 0)
+  const prevRevenue = Number(prevRevenueAgg._sum.total ?? 0)
+
+  return {
+    totalUsers,
+    activeUsers,
+    ordersThisMonth,
+    ordersChange: percentChange(ordersThisMonth, ordersPrevMonth),
+    totalProducts,
+    totalRevenue: Math.round(totalRevenue * 100) / 100,
+    revenueChange: percentChange(totalRevenue, prevRevenue),
+  }
+}
+
+export async function getActivityStats() {
+  await requireAdmin()
+
+  const empty = {
+    actionsToday: 0, actionsWeek: 0, activeUsersToday: 0,
+    mostFrequentAction: null as string | null, totalActions: 0,
+    availableActions: [] as string[],
+  }
+  if (await isMasterContext()) return empty
+
+  const db = await getCurrentDb()
+
+  const now = new Date()
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const weekAgo = new Date(now)
+  weekAgo.setDate(weekAgo.getDate() - 7)
+  const monthAgo = new Date(now)
+  monthAgo.setDate(monthAgo.getDate() - 30)
+
+  const [actionsToday, actionsWeek, usersToday, actionCounts, totalActions, distinctActions] = await Promise.all([
+    db.activityLog.count({ where: { createdAt: { gte: startOfDay } } }),
+    db.activityLog.count({ where: { createdAt: { gte: weekAgo } } }),
+    db.activityLog.groupBy({
+      by: ["userId"],
+      where: { createdAt: { gte: startOfDay }, userId: { not: null } },
+    }),
+    db.activityLog.groupBy({
+      by: ["action"],
+      _count: { id: true },
+      where: { createdAt: { gte: monthAgo } },
+      orderBy: { _count: { id: "desc" } },
+      take: 1,
+    }),
+    db.activityLog.count(),
+    db.activityLog.groupBy({ by: ["action"], orderBy: { action: "asc" } }),
+  ])
+
+  return {
+    actionsToday,
+    actionsWeek,
+    activeUsersToday: usersToday.length,
+    mostFrequentAction: actionCounts[0]?.action ?? null,
+    totalActions,
+    availableActions: distinctActions.map((a) => a.action),
+  }
 }
