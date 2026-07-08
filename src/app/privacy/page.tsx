@@ -1,4 +1,18 @@
+import type { Metadata } from "next"
 import { PublicHeader } from "@/components/layouts/public-header"
+
+export const metadata: Metadata = {
+  title: "Privacy Policy — FruttaGest",
+  description:
+    "Informativa sulla privacy di FruttaGest: scopri come trattiamo i tuoi dati personali nel rispetto del GDPR.",
+  openGraph: {
+    title: "Privacy Policy — FruttaGest",
+    url: "https://www.fruttagest.it/privacy",
+  },
+  alternates: {
+    canonical: "https://www.fruttagest.it/privacy",
+  },
+}
 
 export default function PrivacyPage() {
   return (

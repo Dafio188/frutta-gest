@@ -1,4 +1,18 @@
+import type { Metadata } from "next"
 import { PublicHeader } from "@/components/layouts/public-header"
+
+export const metadata: Metadata = {
+  title: "Termini e Condizioni — FruttaGest",
+  description:
+    "Termini e condizioni d'uso della piattaforma FruttaGest. Regole per l'accesso e l'utilizzo del servizio.",
+  openGraph: {
+    title: "Termini e Condizioni — FruttaGest",
+    url: "https://www.fruttagest.it/terms",
+  },
+  alternates: {
+    canonical: "https://www.fruttagest.it/terms",
+  },
+}
 
 export default function TermsPage() {
   return (

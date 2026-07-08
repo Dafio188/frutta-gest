@@ -4,12 +4,28 @@
  * Include il form di cattura Lead collegato al Master DB.
  */
 
+import type { Metadata } from "next"
 import Link from "next/link"
 import { PublicHeader } from "@/components/layouts/public-header"
 import { ContactForm } from "@/components/leads/contact-form"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ChevronRight, Shield } from "lucide-react"
+
+export const metadata: Metadata = {
+  title: "Contatti — Richiedi una demo di FruttaGest",
+  description:
+    "Contatta FruttaGest per richiedere una demo personalizzata. Raccontaci la tua attività e ti mostreremo come il gestionale può aiutarti.",
+  openGraph: {
+    title: "Contatti — Richiedi una demo di FruttaGest",
+    description:
+      "Richiedi una demo personalizzata del gestionale ortofrutticolo FruttaGest.",
+    url: "https://www.fruttagest.it/contact",
+  },
+  alternates: {
+    canonical: "https://www.fruttagest.it/contact",
+  },
+}
 
 export default function ContactPage() {
   return (

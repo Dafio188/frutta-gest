@@ -52,7 +52,6 @@ export const metadata: Metadata = {
   openGraph: {
     title: "FruttaGest — Gestionale Ortofrutticolo",
     description: siteDescription,
-    url: siteUrl,
     siteName: siteName,
     images: [
       {
@@ -69,9 +68,6 @@ export const metadata: Metadata = {
     title: "FruttaGest — Gestionale Ortofrutticolo",
     description: siteDescription,
     images: ["/og-image.png"],
-  },
-  alternates: {
-    canonical: siteUrl,
   },
 }
 

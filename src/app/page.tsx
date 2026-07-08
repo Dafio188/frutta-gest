@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import Image from "next/image"
 import {
@@ -18,6 +19,23 @@ import {
   LayoutGrid,
 } from "lucide-react"
 import { PublicHeader } from "@/components/layouts/public-header"
+
+const siteUrl = "https://www.fruttagest.it"
+const siteDescription =
+  "Gestionale completo per la vendita di prodotti ortofrutticoli a ristoranti e supermercati. Ordini, DDT, fatture, gestione finanziaria."
+
+export const metadata: Metadata = {
+  title: "FruttaGest — Gestionale Ortofrutticolo",
+  description: siteDescription,
+  openGraph: {
+    title: "FruttaGest — Gestionale Ortofrutticolo",
+    description: siteDescription,
+    url: siteUrl,
+  },
+  alternates: {
+    canonical: siteUrl,
+  },
+}
 
 const suiteApps = [
   {
