@@ -10,6 +10,11 @@ export const metadata: Metadata = {
       "Ordini da WhatsApp con AI, gestione giri e consegne, listini personalizzati, fatturazione automatica.",
     url: "https://www.fruttagest.it/distributori",
   },
+  twitter: {
+    title: "FruttaGest Distributori — Gestionale per distributori ortofrutticoli",
+    description:
+      "Ordini da WhatsApp con AI, gestione giri e consegne, listini personalizzati, fatturazione automatica.",
+  },
   alternates: {
     canonical: "https://www.fruttagest.it/distributori",
   },

@@ -9,6 +9,11 @@ export const metadata: Metadata = {
     title: "Privacy Policy — FruttaGest",
     url: "https://www.fruttagest.it/privacy",
   },
+  twitter: {
+    title: "Privacy Policy — FruttaGest",
+    description:
+      "Informativa sulla privacy di FruttaGest: scopri come trattiamo i tuoi dati personali nel rispetto del GDPR.",
+  },
   alternates: {
     canonical: "https://www.fruttagest.it/privacy",
   },

@@ -10,6 +10,11 @@ export const metadata: Metadata = {
       "Vendita al banco veloce, gestione stoccaggio e lotti, contabilità semplificata, resi e sconti.",
     url: "https://www.fruttagest.it/grossisti",
   },
+  twitter: {
+    title: "FruttaGest Grossisti — Gestionale per grossisti ortofrutticoli",
+    description:
+      "Vendita al banco veloce, gestione stoccaggio e lotti, contabilità semplificata, resi e sconti.",
+  },
   alternates: {
     canonical: "https://www.fruttagest.it/grossisti",
   },

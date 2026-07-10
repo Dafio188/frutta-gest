@@ -22,6 +22,11 @@ export const metadata: Metadata = {
       "Richiedi una demo personalizzata del gestionale ortofrutticolo FruttaGest.",
     url: "https://www.fruttagest.it/contact",
   },
+  twitter: {
+    title: "Contatti — Richiedi una demo di FruttaGest",
+    description:
+      "Richiedi una demo personalizzata del gestionale ortofrutticolo FruttaGest.",
+  },
   alternates: {
     canonical: "https://www.fruttagest.it/contact",
   },

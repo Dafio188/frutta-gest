@@ -10,6 +10,11 @@ export const metadata: Metadata = {
       "Punto cassa smart, fidelity card clienti, e-commerce locale e gestione scarti per il tuo negozio.",
     url: "https://www.fruttagest.it/fruttivendolo",
   },
+  twitter: {
+    title: "FruttaGest Fruttivendolo — Gestionale per negozi ortofrutticoli",
+    description:
+      "Punto cassa smart, fidelity card clienti, e-commerce locale e gestione scarti per il tuo negozio.",
+  },
   alternates: {
     canonical: "https://www.fruttagest.it/fruttivendolo",
   },

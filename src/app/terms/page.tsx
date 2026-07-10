@@ -9,6 +9,11 @@ export const metadata: Metadata = {
     title: "Termini e Condizioni — FruttaGest",
     url: "https://www.fruttagest.it/terms",
   },
+  twitter: {
+    title: "Termini e Condizioni — FruttaGest",
+    description:
+      "Termini e condizioni d'uso della piattaforma FruttaGest. Regole per l'accesso e l'utilizzo del servizio.",
+  },
   alternates: {
     canonical: "https://www.fruttagest.it/terms",
   },
